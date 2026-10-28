@@ -251,9 +251,23 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 .chart .val { fill: var(--ink); font-weight: 600; }
 .ch-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
 .ch-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-.fin-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.fin-row { border-top: 1px solid var(--line); }
 .fin-row:first-child { border-top: 0; }
 .fin-row .nm { font-weight: 600; }
+.fin-sum { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; padding: 12px 0; cursor: pointer; }
+.fin-sum:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.fin-sum .meter { grid-column: 1 / -1; height: 6px; }
+.fin-sum .right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.fin-detail { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 16px; }
+.pay-list { display: flex; flex-direction: column; gap: 4px; }
+.pay { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--bg); font-size: 14px; }
+.pay .del { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 2px 8px; }
+.pay-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.pay-add input, .fin-detail input { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; box-sizing: border-box; min-width: 0; }
+.fin-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.debt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.debt:first-child { border-top: 0; }
+.debts { border-color: var(--yellow); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { font: inherit; font-size: 13px; padding: 7px 11px; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; border-left: 1px solid var(--line); }
 .seg button:first-child { border-left: 0; }
@@ -266,9 +280,12 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 .fin-box { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; background: var(--bg); }
 .fin-box .field input { background: var(--surface); }
 @media (max-width: 760px) {
-  .fin-row { grid-template-columns: minmax(0, 1fr); }
   .fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fin-kpis .card:first-child { grid-column: 1 / -1; }
+  .pay-add { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pay-add .btn { grid-column: 1 / -1; }
+  .pay-add input, .fin-detail input { font-size: 16px; min-height: 44px; }
+  .fin-actions .btn { flex: 1 1 auto; }
+  .debt .btn { min-height: 40px; }
   .seg { width: 100%; }
   .seg button { flex: 1; min-height: 44px; font-size: 14px; }
   .month-nav { justify-content: space-between; }
@@ -362,20 +379,24 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   </section>
   <div class="list" id="fin-body" hidden>
     <div class="month-nav"><button class="btn" id="fin-prev" type="button" aria-label="Предыдущий месяц">‹</button><b id="fin-month">—</b><button class="btn" id="fin-next" type="button" aria-label="Следующий месяц">›</button></div>
+    <section class="card debts" id="fin-debts" hidden>
+      <h2>Долги клиентов</h2>
+      <span class="hint">Всё, что клиенты должны за этот и прошлые месяцы. Когда деньги придут, нажмите «Получил».</span>
+      <div id="fin-debts-list"></div>
+    </section>
     <div class="fin-kpis">
-      <div class="card"><span class="l">Доход за месяц</span><span class="big" id="k-income">—</span><span class="hint" id="k-income-sub"></span></div>
-      <div class="card"><span class="l">Клиентов</span><span class="big" id="k-clients">—</span></div>
-      <div class="card"><span class="l">Оплатили</span><span class="big" id="k-paid">—</span></div>
-      <div class="card"><span class="l">Ждём оплату</span><span class="big" id="k-wait">—</span></div>
-      <div class="card"><span class="l">Ушли</span><span class="big" id="k-left">—</span></div>
+      <div class="card"><span class="l">Получено за месяц</span><span class="big" id="k-got">—</span><span class="hint" id="k-got-sub"></span></div>
+      <div class="card"><span class="l">Ждём ещё</span><span class="big" id="k-debt">—</span></div>
+      <div class="card"><span class="l">Недополучили</span><span class="big" id="k-lost">—</span></div>
+      <div class="card"><span class="l">Клиентов</span><span class="big" id="k-clients">—</span><span class="hint" id="k-clients-sub"></span></div>
     </div>
     <div class="pv-grid">
-      <section class="card"><h2>Доход по месяцам, $</h2><div class="chart" id="ch-income"></div></section>
-      <section class="card"><h2>Клиенты по месяцам</h2><div class="ch-legend"><span><i style="background:var(--green)"></i>Оплатили</span><span><i style="background:var(--yellow)"></i>Ждём оплату</span><span><i style="background:var(--red)"></i>Ушли</span></div><div class="chart" id="ch-clients"></div></section>
+      <section class="card"><h2>Деньги по месяцам, $</h2><div class="ch-legend"><span><i style="background:var(--green)"></i>Получено</span><span><i style="background:var(--yellow)"></i>Ждём ещё</span><span><i style="background:var(--red)"></i>Недополучили</span></div><div class="chart" id="ch-income"></div></section>
+      <section class="card"><h2>Клиенты по месяцам</h2><div class="ch-legend"><span><i style="background:var(--green)"></i>Оплатили полностью</span><span><i style="background:var(--yellow)"></i>Частично или ждём</span><span><i style="background:var(--red)"></i>Недоплатили или ушли</span></div><div class="chart" id="ch-clients"></div></section>
     </div>
     <section class="card">
       <h2>Клиенты за месяц</h2>
-      <span class="hint">Отмечайте, кто оплатил. «Ушёл» убирает клиента из следующих месяцев. Сумму и месяц начала работы меняйте в карточке проекта.</span>
+      <span class="hint">Нажмите на клиента, чтобы записать платёж. Можно вносить частями: например, 50% сейчас и остаток позже. Если остаток не придёт, закройте месяц с недоплатой.</span>
       <div id="fin-list"></div>
     </section>
   </div>
@@ -921,25 +942,48 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     return finConfigured;
   }
 
-  function statusIn(r, m) {
-    if (!r.startMonth || m < r.startMonth) return null;
-    const pay = r.payments || {};
-    const leftAt = Object.keys(pay).filter((k) => pay[k] && pay[k].s === 'left').sort()[0];
-    if (leftAt && m > leftAt) return null;
-    return pay[m] ? pay[m].s : 'pending';
+  /* Месяц клиента: due — сколько договорились, got — полученные платежи [{a, d}],
+     s — open (ждём деньги), closed (закрыт с недоплатой), left (клиент ушёл). */
+  function entry(r, m) {
+    const e = r.payments?.[m], fee = Number(r.fee) || 0;
+    if (!e) return { due: fee, got: [], s: 'open' };
+    if ('due' in e || 'got' in e) return { due: Number(e.due) || 0, got: Array.isArray(e.got) ? e.got : [], s: e.s || 'open' };
+    const f = Number(e.fee ?? fee) || 0; // старый формат: {s: paid|unpaid|left, fee}
+    if (e.s === 'paid') return { due: f, got: [{ a: f, d: null }], s: 'open' };
+    return { due: f, got: [], s: e.s === 'left' ? 'left' : 'open' };
+  }
+  const gotSum = (e) => e.got.reduce((a, x) => a + (Number(x.a) || 0), 0);
+  function stateOf(e) {
+    if (e.s === 'left') return 'left';
+    const g = gotSum(e);
+    if (g >= e.due) return 'paid';
+    if (e.s === 'closed') return 'short';
+    return g > 0 ? 'partial' : 'wait';
+  }
+  function activeIn(r, m) {
+    if (!r.startMonth || m < r.startMonth) return false;
+    const leftAt = Object.keys(r.payments || {}).filter((k) => entry(r, k).s === 'left').sort()[0];
+    return !(leftAt && m > leftAt);
   }
   function monthStats(m) {
-    const s = { clients: 0, paid: 0, wait: 0, left: 0, income: 0, expected: 0 };
+    const s = { clients: 0, paid: 0, open: 0, bad: 0, left: 0, due: 0, got: 0, debt: 0, lost: 0 };
     finRecords.forEach((r) => {
-      const st = statusIn(r, m); if (!st) return;
-      s.clients++;
-      const fee = r.payments?.[m]?.fee ?? (Number(r.fee) || 0);
-      if (st === 'paid') { s.paid++; s.income += fee; s.expected += fee; }
-      else if (st === 'left') s.left++;
-      else { s.wait++; s.expected += Number(r.fee) || 0; }
+      if (!activeIn(r, m)) return;
+      const e = entry(r, m), st = stateOf(e), g = gotSum(e);
+      s.clients++; s.got += g;
+      if (st === 'left') { s.left++; s.bad++; return; }
+      s.due += e.due;
+      if (st === 'paid') s.paid++;
+      else if (st === 'short') { s.bad++; s.lost += e.due - g; }
+      else { s.open++; s.debt += e.due - g; }
     });
     return s;
   }
+  const STATE_LABEL = { paid: 'Оплачено', partial: 'Частично', wait: 'Ждём оплату', short: 'Недоплата', left: 'Ушёл' };
+  const STATE_CHIP = { paid: 'green', partial: 'yellow', wait: 'yellow', short: 'red', left: 'red' };
+  const usd = (v) => '$' + cents.format(v);
+  const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const openRows = new Set();
 
   async function enterFinance() {
     $('fin-lock-err').hidden = true;
@@ -959,50 +1003,140 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     renderFinance();
   }
 
+  function renderDebts() {
+    const cur = monthKey(new Date()), list = $('fin-debts-list'), items = [];
+    finRecords.forEach((r) => {
+      Object.keys({ ...(r.payments || {}), [cur]: 1 }).forEach((m) => {
+        if (m > cur || !activeIn(r, m)) return;
+        const e = entry(r, m), st = stateOf(e);
+        if ((st === 'partial' || (st === 'wait' && m < cur)) && e.due > 0) items.push({ r, m, e, left: e.due - gotSum(e) });
+      });
+    });
+    items.sort((a, b) => a.m.localeCompare(b.m));
+    $('fin-debts').hidden = !items.length;
+    list.replaceChildren();
+    items.forEach(({ r, m, e, left }) => {
+      const row = el('div', 'debt');
+      const info = el('div');
+      info.append(el('div', 'nm', r.name || 'Без названия'), el('div', 'sub', monthName(m) + ' · получено ' + usd(gotSum(e)) + ' из ' + usd(e.due)));
+      const acts = el('div', 'fin-actions');
+      const take = el('button', 'btn primary', 'Получил ' + usd(left)); take.type = 'button';
+      take.onclick = () => saveEntry(r, m, { ...e, got: e.got.concat({ a: left, d: todayISO() }) }, 'Записано: ' + usd(left));
+      const go = el('button', 'btn', 'Открыть'); go.type = 'button';
+      go.onclick = () => { finMonth = m; openRows.add(r.id); renderFinance(); $('fin-list').scrollIntoView({ behavior: 'smooth' }); };
+      acts.append(take, go);
+      row.append(info, acts); list.append(row);
+    });
+  }
+
   function renderFinance() {
     if (!finToken || $('fin-body').hidden) return;
     $('fin-month').textContent = monthName(finMonth);
     const s = monthStats(finMonth);
-    $('k-income').textContent = '$' + money.format(s.income);
-    $('k-income-sub').textContent = s.expected > s.income ? 'ожидаем ещё $' + money.format(s.expected - s.income) : (s.clients ? 'оплачено всё' : '');
-    $('k-clients').textContent = s.clients; $('k-paid').textContent = s.paid; $('k-wait').textContent = s.wait; $('k-left').textContent = s.left;
+    $('k-got').textContent = usd(s.got);
+    $('k-got-sub').textContent = s.due ? 'из ' + usd(s.due) + ' по договорённостям' : '';
+    $('k-debt').textContent = usd(s.debt);
+    $('k-lost').textContent = usd(s.lost);
+    $('k-clients').textContent = s.clients;
+    $('k-clients-sub').textContent = s.clients ? 'оплатили полностью ' + s.paid + (s.left ? ' · ушли ' + s.left : '') : '';
+    renderDebts();
 
     const n = window.innerWidth > 760 ? 12 : 6;
     const months = Array.from({ length: n }, (_, i) => shiftMonth(finMonth, i - n + 1));
     const stats = months.map((m) => ({ m, ...monthStats(m) }));
-    barChart($('ch-income'), stats, (d) => [{ v: d.income, c: 'var(--accent)' }], (d) => d.income ? '$' + compactMoney(d.income) : '');
-    barChart($('ch-clients'), stats, (d) => [{ v: d.paid, c: 'var(--green)' }, { v: d.wait, c: 'var(--yellow)' }, { v: d.left, c: 'var(--red)' }], (d) => d.clients ? String(d.clients) : '');
+    barChart($('ch-income'), stats, (d) => [{ v: d.got, c: 'var(--green)' }, { v: d.debt, c: 'var(--yellow)' }, { v: d.lost, c: 'var(--red)' }], (d) => d.got ? '$' + compactMoney(d.got) : '');
+    barChart($('ch-clients'), stats, (d) => [{ v: d.paid, c: 'var(--green)' }, { v: d.open, c: 'var(--yellow)' }, { v: d.bad, c: 'var(--red)' }], (d) => d.clients ? String(d.clients) : '');
 
     const list = $('fin-list'); list.replaceChildren();
-    const rows = finRecords.map((r) => ({ r, st: statusIn(r, finMonth) })).filter((x) => x.st)
-      .sort((x, y) => (x.r.name || '').localeCompare(y.r.name || '', 'ru'));
+    const rows = finRecords.filter((r) => activeIn(r, finMonth)).sort((x, y) => (x.name || '').localeCompare(y.name || '', 'ru'));
     if (!rows.length) {
       list.append(el('div', 'hint', finRecords.length ? 'В этом месяце клиентов нет.' : 'Пока нет клиентов с оплатой. Откройте проект, нажмите «Изменить проект» и укажите в блоке «Оплата клиента», сколько он платит в месяц.'));
       return;
     }
-    rows.forEach(({ r, st }) => {
-      const row = el('div', 'fin-row');
-      const info = el('div');
-      const proj = projects.find((p) => p.id === r.id);
-      info.append(el('div', 'nm', r.name || proj?.name || 'Без названия'), el('div', 'sub', [r.client || proj?.client, '$' + money.format(r.payments?.[finMonth]?.fee ?? r.fee ?? 0) + ' в месяц'].filter(Boolean).join(' · ')));
-      const seg = el('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Статус оплаты');
-      [['paid', 'Оплатил'], ['unpaid', 'Не оплатил'], ['left', 'Ушёл']].forEach(([k, label]) => {
-        const b = el('button', k, label); b.type = 'button';
-        b.setAttribute('aria-pressed', String(st === k));
-        b.onclick = () => setPayment(r, st === k ? null : k);
-        seg.append(b);
-      });
-      row.append(info, seg); list.append(row);
-    });
+    rows.forEach((r) => list.append(finRow(r)));
   }
 
-  async function setPayment(r, s) {
-    const value = s ? { s, fee: Number(r.fee) || 0 } : null;
-    r.payments = { ...(r.payments || {}) };
-    if (value) r.payments[finMonth] = value; else delete r.payments[finMonth];
+  function finRow(r) {
+    const m = finMonth, e = entry(r, m), st = stateOf(e), g = gotSum(e), rest = Math.max(0, e.due - g);
+    const proj = projects.find((p) => p.id === r.id);
+    const row = el('div', 'fin-row');
+    const sum = el('button', 'fin-sum'); sum.type = 'button';
+    const open = openRows.has(r.id);
+    sum.setAttribute('aria-expanded', String(open));
+    const info = el('div');
+    info.append(el('div', 'nm', r.name || proj?.name || 'Без названия'), el('div', 'sub', [r.client || proj?.client, usd(Number(r.fee) || 0) + ' в месяц'].filter(Boolean).join(' · ')));
+    const right = el('div', 'right');
+    right.append(el('span', 'chip ' + STATE_CHIP[st], st === 'short' ? 'Недополучили ' + usd(rest) : STATE_LABEL[st]));
+    right.append(el('span', 'sub mono', st === 'left' ? (g ? 'получено ' + usd(g) : '') : usd(g) + ' из ' + usd(e.due)));
+    const meter = el('div', 'meter'); const fill = el('i');
+    fill.style.width = (e.due ? Math.min(1, g / e.due) * 100 : st === 'paid' ? 100 : 0) + '%';
+    fill.style.background = st === 'paid' ? 'var(--green)' : st === 'short' || st === 'left' ? 'var(--red)' : 'var(--yellow)';
+    meter.append(fill);
+    sum.append(info, right, meter);
+    sum.onclick = () => { open ? openRows.delete(r.id) : openRows.add(r.id); renderFinance(); };
+    row.append(sum);
+    if (!open) return row;
+
+    const d = el('div', 'fin-detail');
+    const dueF = el('div', 'field');
+    const dueL = el('label', null, 'Договорились за ' + monthName(m).split(' ')[0] + ', $'); dueL.htmlFor = 'due-' + r.id;
+    const dueI = el('input'); dueI.type = 'number'; dueI.min = '0'; dueI.step = '1'; dueI.inputMode = 'decimal'; dueI.id = 'due-' + r.id; dueI.value = e.due;
+    dueI.onchange = () => { const v = Number(dueI.value); if (v >= 0) saveEntry(r, m, { ...e, due: v }); };
+    dueF.append(dueL, dueI, el('span', 'hint', 'Если в этом месяце договорились на другую сумму, поменяйте здесь. Обычная сумма меняется в карточке проекта.'));
+    d.append(dueF);
+
+    if (e.got.length) {
+      const pl = el('div', 'pay-list');
+      e.got.forEach((x, i) => {
+        const p = el('div', 'pay');
+        p.append(el('span', null, (x.d ? fmtDate(x.d) : 'Платёж') + ' · ' + usd(x.a)));
+        const del = el('button', 'del', '×'); del.type = 'button'; del.setAttribute('aria-label', 'Удалить платёж');
+        del.onclick = () => saveEntry(r, m, { ...e, got: e.got.filter((_, j) => j !== i) }, 'Платёж удалён');
+        p.append(del); pl.append(p);
+      });
+      d.append(pl);
+    }
+
+    if (st !== 'left' && st !== 'paid') {
+      const add = el('div', 'pay-add');
+      const aF = el('div', 'field'); const aL = el('label', null, 'Сумма, $'); aL.htmlFor = 'pa-' + r.id;
+      const aI = el('input'); aI.type = 'number'; aI.min = '0'; aI.step = '0.01'; aI.inputMode = 'decimal'; aI.id = 'pa-' + r.id; aI.placeholder = rest ? String(rest) : '0';
+      aF.append(aL, aI);
+      const dF = el('div', 'field'); const dL = el('label', null, 'Дата'); dL.htmlFor = 'pd-' + r.id;
+      const dI = el('input'); dI.type = 'date'; dI.id = 'pd-' + r.id; dI.value = todayISO();
+      dF.append(dL, dI);
+      const b = el('button', 'btn', 'Добавить платёж'); b.type = 'button';
+      b.onclick = () => {
+        const a = Number(aI.value || rest);
+        if (!(a > 0)) { toast('Впишите сумму платежа'); aI.focus(); return; }
+        saveEntry(r, m, { ...e, got: e.got.concat({ a, d: dI.value || todayISO() }) }, 'Платёж записан: ' + usd(a));
+      };
+      add.append(aF, dF, b); d.append(add);
+    }
+
+    const acts = el('div', 'fin-actions');
+    const btn = (label, cls, fn) => { const b = el('button', 'btn' + (cls ? ' ' + cls : ''), label); b.type = 'button'; b.onclick = fn; acts.append(b); return b; };
+    if (st === 'partial' || st === 'wait') {
+      btn('Оплатил полностью', 'primary', () => saveEntry(r, m, { ...e, got: e.got.concat({ a: rest, d: todayISO() }) }, 'Записано: ' + usd(rest)));
+      const close = btn('Закрыть с недоплатой', 'danger', () => {
+        if (!close.dataset.armed) { close.dataset.armed = '1'; close.textContent = 'Точно? Недополучим ' + usd(rest); close.classList.add('armed'); setTimeout(() => { if (close.isConnected) { delete close.dataset.armed; close.textContent = 'Закрыть с недоплатой'; close.classList.remove('armed'); } }, 4000); return; }
+        saveEntry(r, m, { ...e, s: 'closed' }, 'Месяц закрыт с недоплатой');
+      });
+    }
+    if (st === 'short') btn('Вернуть в долги', '', () => saveEntry(r, m, { ...e, s: 'open' }, 'Снова ждём оплату'));
+    if (st === 'left') btn('Клиент вернулся', '', () => saveEntry(r, m, { ...e, s: 'open' }));
+    else btn('Клиент ушёл', '', () => saveEntry(r, m, { ...e, s: 'left' }, 'Отмечено: клиент ушёл'));
+    d.append(acts);
+    row.append(d);
+    return row;
+  }
+
+  async function saveEntry(r, m, e, msg) {
+    const value = { due: Number(e.due) || 0, got: e.got.map((x) => ({ a: Number(x.a), d: x.d || null })), s: e.s || 'open' };
+    r.payments = { ...(r.payments || {}), [m]: value };
     renderFinance();
-    try { await finApi('PUT', r.id, { payments: { [finMonth]: value } }); }
-    catch (e) { toast('Не получилось сохранить. Проверьте интернет.'); try { await loadFinance(); } catch (_) {} renderFinance(); }
+    try { await finApi('PUT', r.id, { payments: { [m]: value } }); if (msg) toast(msg); }
+    catch (ex) { toast('Не получилось сохранить. Проверьте интернет.'); try { await loadFinance(); } catch (_) {} renderFinance(); }
   }
 
   const compactMoney = (v) => v >= 10000 ? new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(v) : money.format(v);

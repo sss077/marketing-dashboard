@@ -11,7 +11,8 @@ import { randomBytes, scryptSync, createHmac, timingSafeEqual } from "node:crypt
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
-const STATUSES = new Set(["paid", "unpaid", "left"]);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const STATES = new Set(["open", "closed", "left"]);
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -46,7 +47,15 @@ function clean(patch, prev) {
     for (const [m, v] of Object.entries(patch.payments)) {
       if (!MONTH_RE.test(m)) continue;
       if (v === null) delete pay[m];
-      else if (v && STATUSES.has(v.s)) pay[m] = { s: v.s, fee: Number(v.fee) >= 0 ? Number(v.fee) : 0 };
+      else if (v && typeof v === "object") {
+        // Месяц клиента: сколько договорились (due), полученные платежи (got) и состояние:
+        // open — ждём деньги, closed — закрыт с недоплатой, left — клиент ушёл.
+        const got = (Array.isArray(v.got) ? v.got : [])
+          .slice(0, 50)
+          .map((x) => ({ a: Math.round(Number(x?.a) * 100) / 100, d: DATE_RE.test(x?.d) ? x.d : null }))
+          .filter((x) => x.a > 0);
+        pay[m] = { due: Number(v.due) >= 0 ? Number(v.due) : 0, got, s: STATES.has(v.s) ? v.s : "open" };
+      }
     }
     out.payments = pay;
   }
