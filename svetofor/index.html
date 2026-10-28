@@ -1,0 +1,634 @@
+<title>Светофор проектов</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: пульт — сверху три лампы-счётчика, ниже список проектов строками, редактор выезжает справа (на телефоне на весь экран) */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --ink: #17202a;
+  --muted: #5d6b78;
+  --line: #dde3e9;
+  --accent: #0f6b74;
+  --accent-ink: #ffffff;
+  --red: #d33b2c;
+  --yellow: #d99a06;
+  --green: #1f9a55;
+  --done: #6f7f8f;
+  --red-soft: #fbe9e7;
+  --yellow-soft: #fdf3dc;
+  --green-soft: #e3f4ea;
+  --done-soft: #eaeef2;
+  --track: #e7ecf0;
+  --shadow: 0 10px 40px rgba(20, 32, 44, .18);
+  --f-display: "Unbounded", "Onest", system-ui, sans-serif;
+  --f-body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161b; --surface: #182029; --ink: #e8edf2; --muted: #93a1ae; --line: #2a3541;
+    --accent: #3fb5bf; --accent-ink: #062226;
+    --red: #ff6a5a; --yellow: #f2b630; --green: #3ccb7b; --done: #8796a5;
+    --red-soft: #3a1f1c; --yellow-soft: #3a2f14; --green-soft: #163024; --done-soft: #232d37;
+    --track: #26313c; --shadow: 0 10px 40px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161b; --surface: #182029; --ink: #e8edf2; --muted: #93a1ae; --line: #2a3541;
+  --accent: #3fb5bf; --accent-ink: #062226;
+  --red: #ff6a5a; --yellow: #f2b630; --green: #3ccb7b; --done: #8796a5;
+  --red-soft: #3a1f1c; --yellow-soft: #3a2f14; --green-soft: #163024; --done-soft: #232d37;
+  --track: #26313c; --shadow: 0 10px 40px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1100px; margin-inline: auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.top h1 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: clamp(22px, 4vw, 30px); letter-spacing: -.01em; text-wrap: balance; }
+.top p { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+.btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--red); }
+.btn.danger.armed { background: var(--red); color: var(--surface); border-color: var(--red); }
+.btn:disabled { opacity: .5; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Лампы-счётчики */
+.lights { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .lights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.light { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.light[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.lamp { width: 18px; height: 18px; border-radius: 50%; flex: none; background: var(--done); }
+.lamp.red { background: var(--red); box-shadow: 0 0 0 4px var(--red-soft); }
+.lamp.yellow { background: var(--yellow); box-shadow: 0 0 0 4px var(--yellow-soft); }
+.lamp.green { background: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+.lamp.done { background: var(--done); box-shadow: 0 0 0 4px var(--done-soft); }
+.light b { display: block; font-family: var(--f-display); font-weight: 500; font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.light span.l { color: var(--muted); font-size: 13px; }
+
+.note-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--r); background: var(--yellow-soft); font-size: 14px; }
+
+/* Список проектов */
+.list { display: flex; flex-direction: column; gap: 10px; }
+.row { display: grid; grid-template-columns: 6px minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1fr); gap: 0 18px; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; cursor: pointer; text-align: left; font: inherit; color: inherit; padding: 0; width: 100%; }
+.row:hover { border-color: var(--muted); }
+.stripe { background: var(--done); }
+.stripe.red { background: var(--red); } .stripe.yellow { background: var(--yellow); } .stripe.green { background: var(--green); }
+.cell { padding: 14px 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cell:last-child { padding-right: 16px; }
+.name { font-weight: 600; font-size: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.sub { color: var(--muted); font-size: 13px; }
+.now { font-size: 14px; }
+.now em { font-style: normal; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--done-soft); color: var(--ink); }
+.chip.red { background: var(--red-soft); } .chip.yellow { background: var(--yellow-soft); } .chip.green { background: var(--green-soft); }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.meter { position: relative; height: 8px; background: var(--track); border-radius: 4px; }
+.meter i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); }
+.meter s { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); text-decoration: none; }
+.mrow { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 13px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; }
+.warn { color: var(--red); }
+@media (max-width: 760px) {
+  .row { grid-template-columns: 6px minmax(0, 1fr); }
+  .row .cell { padding: 0 16px 0 0; }
+  .row .cell:nth-child(2) { padding-top: 14px; }
+  .row .cell:last-child { padding-bottom: 14px; }
+  .row { row-gap: 12px; }
+  .stripe { grid-row: 1 / span 3; }
+}
+
+.empty { padding: 40px 20px; text-align: center; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.empty h2 { margin: 0; color: var(--ink); font-size: 18px; }
+
+details.rules { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; }
+details.rules summary { cursor: pointer; font-weight: 600; }
+details.rules ul { margin: 10px 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 75ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend .meter { width: 70px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+
+/* Редактор */
+.scrim { position: fixed; inset: 0; background: rgba(10, 16, 22, .45); z-index: 20; }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--surface); z-index: 21; box-shadow: var(--shadow); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.sheet header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.sheet header h2 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 18px; }
+.sheet .body { overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.sheet footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; padding: 14px 20px; border-top: 1px solid var(--line); }
+.sheet footer .right { display: flex; gap: 8px; }
+.x { border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label, .field .lbl { font-size: 13px; font-weight: 600; color: var(--muted); }
+.field input, .field textarea, .field select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; box-sizing: border-box; min-width: 0; }
+.field textarea { min-height: 64px; resize: vertical; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hint { font-size: 12px; color: var(--muted); }
+.tasks { display: flex; flex-direction: column; gap: 6px; }
+.task { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.task input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+.task input[type="text"] { font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 5px 6px; min-width: 0; }
+.task input[type="text"]:hover, .task input[type="text"]:focus { border-color: var(--line); background: var(--bg); }
+.task.is-done input[type="text"] { text-decoration: line-through; color: var(--muted); }
+.task .del { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 2px 6px; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.opt:hover { border-color: var(--muted); }
+.opt[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.opt.add::before { content: "+ "; color: var(--muted); }
+.tpl { display: flex; gap: 8px; }
+.tpl select { flex: 1; }
+.now-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: 14px; }
+.now-tags em { font-style: normal; color: var(--muted); }
+.now-tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+.addtask { display: flex; gap: 8px; }
+.addtask input { flex: 1; }
+.preview { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 8px; background: var(--bg); }
+.err { color: var(--red); font-size: 13px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; z-index: 30; }
+.fab { display: none; }
+body.locked { overflow: hidden; }
+button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+/* Телефон: iPhone 16 Pro Max и похожие (430 pt) */
+@media (max-width: 760px) {
+  body { font-size: 16px; }
+  .wrap { padding-block: 16px 112px; gap: 16px; }
+  .top { align-items: flex-start; }
+  .top p { font-size: 15px; }
+  #add-btn { display: none; }
+  .fab { display: inline-flex; align-items: center; gap: 6px; position: fixed; z-index: 15; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); min-height: 56px; padding: 0 22px; border-radius: 28px; border: 0; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; font-size: 16px; box-shadow: var(--shadow); cursor: pointer; }
+  .lights { gap: 8px; }
+  .light { padding: 12px; gap: 10px; min-height: 64px; }
+  .light b { font-size: 24px; }
+  .light span.l { font-size: 12px; line-height: 1.25; display: block; }
+  .note-bar { font-size: 14px; }
+  .note-bar .btn { width: 100%; }
+  .legend { font-size: 12px; }
+  .row { border-radius: 12px; }
+  .name { font-size: 17px; }
+  .chip, .now-tag { font-size: 13px; padding: 3px 9px; }
+  .kv { font-size: 14px; }
+  .kv dd { text-align: left; }
+  .meter { height: 10px; border-radius: 5px; }
+  .meter i { border-radius: 5px; }
+
+  .sheet { width: 100%; box-shadow: none; padding-left: env(safe-area-inset-left, 0px); }
+  .sheet header { padding: 12px 16px; }
+  .sheet .body { padding: 16px; gap: 18px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .sheet footer { padding: 12px 16px; }
+  .sheet footer .btn { min-height: 48px; }
+  .sheet footer .right { flex: 1; justify-content: flex-end; }
+  .x { min-width: 44px; min-height: 44px; font-size: 28px; }
+  .btn { min-height: 44px; }
+  .field input, .field textarea, .field select { font-size: 16px; min-height: 46px; padding: 10px 12px; border-radius: 10px; }
+  .field input[type="date"] { display: block; -webkit-appearance: none; appearance: none; text-align: left; }
+  .field textarea { min-height: 80px; }
+  .opts { gap: 8px; }
+  .opt { font-size: 15px; min-height: 40px; padding: 8px 14px; }
+  .tpl { flex-wrap: wrap; }
+  .tpl select { flex-basis: 100%; }
+  .tpl .btn { width: 100%; }
+  .task { gap: 10px; min-height: 44px; }
+  .task input[type="checkbox"] { width: 24px; height: 24px; }
+  .task input[type="text"] { font-size: 16px; padding: 8px; }
+  .task .del { min-width: 44px; min-height: 44px; font-size: 22px; }
+  .addtask input { font-size: 16px; }
+  .toast { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 360px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: slide .22s ease-out; }
+  @keyframes slide { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Светофор проектов</h1>
+      <p>Добавьте проект, распишите объём работ задачами и отмечайте, что сделано. Цвет считается сам: по срокам, выполненным задачам и бюджету.</p>
+    </div>
+    <button class="btn primary" id="add-btn" type="button">+ Новый проект</button>
+  </div>
+
+  <div class="lights" role="group" aria-label="Фильтр по цвету">
+    <button class="light" type="button" data-f="red" aria-pressed="false"><span class="lamp red"></span><span><b id="c-red">0</b><span class="l">Красный, нужен разбор</span></span></button>
+    <button class="light" type="button" data-f="yellow" aria-pressed="false"><span class="lamp yellow"></span><span><b id="c-yellow">0</b><span class="l">Жёлтый, под наблюдением</span></span></button>
+    <button class="light" type="button" data-f="green" aria-pressed="false"><span class="lamp green"></span><span><b id="c-green">0</b><span class="l">Зелёный, по плану</span></span></button>
+    <button class="light" type="button" data-f="done" aria-pressed="false"><span class="lamp done"></span><span><b id="c-done">0</b><span class="l">Готово</span></span></button>
+  </div>
+
+  <div class="note-bar" id="example-bar" hidden>
+    <span>Сейчас здесь примеры, они помечены «пример». Откройте любой, чтобы изменить под себя или удалить.</span>
+    <button class="btn" id="clear-examples" type="button">Удалить все примеры</button>
+  </div>
+
+  <div class="legend">
+    <span><span class="meter"><i style="width:60%"></i><s style="left:75%"></s></span>Заливка: сколько задач сделано. Чёрточка: сколько прошло времени до дедлайна.</span>
+  </div>
+
+  <div class="list" id="list" aria-live="polite">
+    <div class="empty" id="loading"><span>Загружаю проекты…</span></div>
+  </div>
+
+  <details class="rules">
+    <summary>Как считается цвет</summary>
+    <ul>
+      <li><b>Красный</b>: дедлайн прошёл, или бюджет превышен больше чем на 10%, или выполнено задач на 25 п.п. меньше, чем прошло времени.</li>
+      <li><b>Жёлтый</b>: отставание от времени на 10–25 п.п., или потрачено больше 90% бюджета при выполненных меньше 80% задач, или до дедлайна 7 дней и меньше при выполненных меньше 90%, или объём работ ещё не расписан.</li>
+      <li><b>Зелёный</b>: ни одно из условий выше не сработало.</li>
+      <li><b>Готово</b>: все задачи отмечены выполненными.</li>
+      <li>Цвет можно выставить вручную в карточке проекта. Тогда рядом будет пометка «вручную».</li>
+    </ul>
+  </details>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <header>
+    <h2 id="sheet-title">Новый проект</h2>
+    <button class="x" id="close-btn" type="button" aria-label="Закрыть">×</button>
+  </header>
+  <form class="body" id="form" novalidate>
+    <div class="preview" id="preview"></div>
+    <div class="field"><label for="f-name">Проект</label><input id="f-name" required placeholder="Например: Запуск рекламы для фитнес-клуба"></div>
+    <div class="grid2">
+      <div class="field"><label for="f-client">Клиент</label><input id="f-client" placeholder="Название клиента"></div>
+      <div class="field"><label for="f-channel">Канал</label><input id="f-channel" list="channels" placeholder="Яндекс Директ, SMM…"></div>
+    </div>
+    <datalist id="channels"><option value="Яндекс Директ"></option><option value="VK Реклама"></option><option value="Google Ads"></option><option value="Meta Ads"></option><option value="SMM"></option><option value="SEO"></option><option value="Email"></option><option value="Telegram Ads"></option><option value="Инфлюенсеры"></option><option value="Контент"></option></datalist>
+    <div class="field">
+      <span class="lbl" id="now-lbl">Что делается сейчас</span>
+      <div class="opts" id="now-opts" role="group" aria-labelledby="now-lbl"></div>
+      <input id="f-now" placeholder="Комментарий, если нужно (необязательно)">
+    </div>
+
+    <div class="field">
+      <span class="lbl">Объём работ</span>
+      <div class="tpl">
+        <select id="f-tpl" aria-label="Шаблон работ">
+          <option value="">Выбрать шаблон работ…</option>
+        </select>
+        <button class="btn" id="tpl-all" type="button" hidden>Добавить все</button>
+      </div>
+      <div class="opts" id="tpl-opts" hidden></div>
+      <div class="tasks" id="tasks"></div>
+      <div class="addtask"><input id="f-newtask" placeholder="Своя задача: впишите и нажмите Enter"><button class="btn" id="add-task" type="button">Добавить</button></div>
+      <span class="hint">Выберите шаблон и нажимайте на нужные задачи, или добавьте все сразу. Отмечайте задачи галочкой по мере выполнения.</span>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label for="f-start">Старт</label><input id="f-start" type="date"></div>
+      <div class="field"><label for="f-deadline">Дедлайн</label><input id="f-deadline" type="date"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="f-budget">Бюджет, ₽</label><input id="f-budget" type="number" min="0" step="1000" inputmode="numeric"></div>
+      <div class="field"><label for="f-spent">Потрачено, ₽</label><input id="f-spent" type="number" min="0" step="1000" inputmode="numeric"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="f-leads">Лиды</label><input id="f-leads" type="number" min="0" inputmode="numeric"></div>
+      <div class="field"><label for="f-owner">Ответственный</label><input id="f-owner" placeholder="Кто ведёт"></div>
+    </div>
+    <div class="field">
+      <label for="f-manual">Цвет светофора</label>
+      <select id="f-manual">
+        <option value="">Считать автоматически</option>
+        <option value="green">Зелёный вручную</option>
+        <option value="yellow">Жёлтый вручную</option>
+        <option value="red">Красный вручную</option>
+      </select>
+    </div>
+    <p class="err" id="form-err" hidden></p>
+  </form>
+  <footer>
+    <button class="btn danger" id="del-btn" type="button">Удалить</button>
+    <div class="right">
+      <button class="btn" id="cancel-btn" type="button">Отмена</button>
+      <button class="btn primary" id="save-btn" type="button">Сохранить</button>
+    </div>
+  </footer>
+</aside>
+<button class="fab" id="fab" type="button">+ Новый проект</button>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const DAY = 864e5;
+  const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+  const pct = (v) => Math.round(v * 100) + '%';
+  const fmtDate = (s) => new Date(s + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  const LABEL = { red: 'Красный', yellow: 'Жёлтый', green: 'Зелёный', done: 'Готово' };
+  const ORDER = { red: 0, yellow: 1, green: 2, done: 3 };
+
+  const NOW_OPTIONS = ['Бриф и согласование', 'Аналитика и стратегия', 'Готовим креативы', 'Настраиваем рекламу', 'Кампании запущены', 'Тестируем и оптимизируем', 'Ведём контент', 'Ждём правки от клиента', 'Ждём оплату или доступы', 'Готовим отчёт', 'На паузе'];
+  const TEMPLATES = {
+    'Реклама (Директ, VK, Google, Meta)': ['Бриф и цели', 'Анализ конкурентов', 'Медиаплан и бюджет', 'Сбор семантики и аудиторий', 'Креативы и тексты', 'Настройка кабинета и аналитики', 'Запуск кампаний', 'Оптимизация и A/B тесты', 'Отчёт клиенту'],
+    'SMM': ['Аудит аккаунтов', 'Стратегия и рубрикатор', 'Визуальный стиль', 'Контент-план', 'Съёмка', 'Публикации и сторис', 'Работа с комментариями', 'Отчёт клиенту'],
+    'SEO': ['Технический аудит', 'Семантическое ядро', 'Структура сайта', 'Тексты для страниц', 'Внутренняя оптимизация', 'Внешние ссылки', 'Отчёт по позициям'],
+    'Email-маркетинг': ['Сегментация базы', 'Сценарии цепочек', 'Тексты писем', 'Вёрстка писем', 'Настройка автоматизации', 'Тестовая отправка', 'Отчёт по открытиям и кликам'],
+    'Блогеры': ['Подбор блогеров', 'Переговоры и договоры', 'ТЗ для блогеров', 'Согласование материалов', 'Выход публикаций', 'Отчёт по охватам'],
+    'Лендинг': ['Прототип', 'Тексты', 'Дизайн', 'Вёрстка', 'Формы и аналитика', 'Тестирование и запуск'],
+    'Запуск продукта': ['Исследование аудитории', 'Позиционирование', 'Стратегия продвижения', 'Креативы', 'Лендинг', 'Рекламный запуск', 'PR и посевы', 'Итоговый отчёт'],
+  };
+  const CHANNEL_TPL = { 'Яндекс Директ': 'Реклама (Директ, VK, Google, Meta)', 'VK Реклама': 'Реклама (Директ, VK, Google, Meta)', 'Google Ads': 'Реклама (Директ, VK, Google, Meta)', 'Meta Ads': 'Реклама (Директ, VK, Google, Meta)', 'Telegram Ads': 'Реклама (Директ, VK, Google, Meta)', 'SMM': 'SMM', 'Контент': 'SMM', 'SEO': 'SEO', 'Email': 'Email-маркетинг', 'Инфлюенсеры': 'Блогеры' };
+
+  let db = null, projects = [], filter = null, editing = null, draftTasks = [], draftNow = [], canWrite = true;
+
+  function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+
+  function assess(p) {
+    const now = today();
+    const tasks = Array.isArray(p.tasks) ? p.tasks : [];
+    const total = tasks.length, done = tasks.filter((t) => t.done).length;
+    const progress = total ? done / total : 0;
+    const s = p.start ? Date.parse(p.start + 'T00:00:00') : null;
+    const d = p.deadline ? Date.parse(p.deadline + 'T00:00:00') : null;
+    const timeShare = s && d && d > s ? Math.min(1, Math.max(0, (now - s) / (d - s))) : null;
+    const daysLeft = d ? Math.round((d - now) / DAY) : null;
+    const budgetUse = Number(p.budget) > 0 ? (Number(p.spent) || 0) / Number(p.budget) : null;
+    const base = { total, done, progress, timeShare, daysLeft, budgetUse };
+    const red = [], yellow = [];
+
+    if (total && done === total) return { ...base, level: 'done', auto: 'done', reasons: ['Все задачи выполнены'] };
+    if (daysLeft !== null && daysLeft < 0) red.push('Дедлайн прошёл ' + -daysLeft + ' дн. назад');
+    if (budgetUse !== null && budgetUse > 1.1) red.push('Перерасход: потрачено ' + pct(budgetUse) + ' бюджета');
+    const lag = timeShare !== null && total ? timeShare - progress : null;
+    if (lag !== null && lag > 0.25) red.push('Отставание на ' + Math.round(lag * 100) + ' п.п.');
+    else if (lag !== null && lag > 0.10) yellow.push('Отставание на ' + Math.round(lag * 100) + ' п.п.');
+    if (budgetUse !== null && budgetUse > 0.9 && budgetUse <= 1.1 && progress < 0.8) yellow.push('Потрачено ' + pct(budgetUse) + ' бюджета, сделано ' + pct(progress));
+    if (daysLeft !== null && daysLeft >= 0 && daysLeft <= 7 && progress < 0.9) yellow.push('До дедлайна ' + daysLeft + ' дн.');
+    if (!total) yellow.push('Не расписан объём работ');
+
+    const auto = red.length ? 'red' : yellow.length ? 'yellow' : 'green';
+    const reasons = red.length ? red.concat(yellow) : yellow.length ? yellow : ['Идёт по плану'];
+    if (p.manual && LABEL[p.manual]) return { ...base, level: p.manual, auto, manual: true, reasons };
+    return { ...base, level: auto, auto, reasons };
+  }
+
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  function render() {
+    const list = $('list');
+    const items = projects.map((p) => ({ p, a: assess(p) }));
+    const counts = { red: 0, yellow: 0, green: 0, done: 0 };
+    items.forEach(({ a }) => counts[a.level]++);
+    for (const k in counts) $('c-' + k).textContent = counts[k];
+    document.querySelectorAll('.light').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.f === filter)));
+    $('example-bar').hidden = !projects.some((p) => p.example);
+
+    items.sort((x, y) => ORDER[x.a.level] - ORDER[y.a.level] || (x.p.deadline || '9999').localeCompare(y.p.deadline || '9999'));
+    const shown = filter ? items.filter((i) => i.a.level === filter) : items;
+    list.replaceChildren();
+
+    if (!projects.length) {
+      const e = el('div', 'empty');
+      e.append(el('h2', null, 'Проектов пока нет'), el('span', null, 'Нажмите «Новый проект», впишите объём работ задачами, и светофор загорится сам.'));
+      const b = el('button', 'btn primary', '+ Новый проект'); b.type = 'button'; b.onclick = () => openEditor(null);
+      if (canWrite) e.append(b);
+      list.append(e); return;
+    }
+    if (!shown.length) { list.append(el('div', 'empty', 'Нет проектов с таким цветом. Нажмите на лампу ещё раз, чтобы снять фильтр.')); return; }
+
+    for (const { p, a } of shown) {
+      const row = el('button', 'row'); row.type = 'button';
+      row.setAttribute('aria-label', (p.name || 'Без названия') + ', ' + LABEL[a.level]);
+      row.onclick = () => openEditor(p);
+      row.append(el('span', 'stripe ' + a.level));
+
+      const c1 = el('div', 'cell');
+      const nm = el('div', 'name'); nm.append(el('span', 'lamp ' + a.level), el('span', null, p.name || 'Без названия'));
+      if (p.example) nm.append(el('span', 'tag', 'пример'));
+      if (a.manual) nm.append(el('span', 'tag', 'вручную'));
+      c1.append(nm);
+      const subBits = [p.client, p.channel, p.owner].filter(Boolean).join(' · ');
+      if (subBits) c1.append(el('div', 'sub', subBits));
+      const tags = Array.isArray(p.nowTags) ? p.nowTags : [];
+      if (tags.length || p.now) {
+        const n = el('div', 'now-tags'); n.append(el('em', null, 'Сейчас:'));
+        tags.forEach((t) => n.append(el('span', 'now-tag', t)));
+        if (p.now) n.append(el('span', null, p.now));
+        c1.append(n);
+      }
+      const chips = el('div', 'chips');
+      a.reasons.forEach((r) => chips.append(el('span', 'chip ' + (a.auto === 'green' || a.level === 'done' ? a.level : a.auto), r)));
+      c1.append(chips);
+
+      const c2 = el('div', 'cell');
+      const mr = el('div', 'mrow');
+      mr.append(el('span', null, 'Сделано ' + a.done + ' из ' + a.total), el('span', 'mono', a.total ? pct(a.progress) : '—'));
+      const m = el('div', 'meter'); const fill = el('i'); fill.style.width = (a.progress * 100) + '%';
+      fill.style.background = a.level === 'done' ? 'var(--done)' : 'var(--accent)';
+      m.append(fill);
+      if (a.timeShare !== null) { const t = el('s'); t.style.left = 'calc(' + (a.timeShare * 100) + '% - 1px)'; t.title = 'Прошло времени: ' + pct(a.timeShare); m.append(t); }
+      c2.append(mr, m);
+      if (a.timeShare !== null) c2.append(el('div', 'sub', 'Прошло ' + pct(a.timeShare) + ' срока'));
+
+      const c3 = el('div', 'cell');
+      const kv = el('dl', 'kv');
+      const add = (k, v, warn) => { kv.append(el('dt', null, k)); const dd = el('dd', 'mono' + (warn ? ' warn' : ''), v); kv.append(dd); };
+      add('Дедлайн', p.deadline ? fmtDate(p.deadline) + (a.daysLeft !== null && a.level !== 'done' ? (a.daysLeft >= 0 ? ' · ' + a.daysLeft + ' дн.' : ' · просрочен') : '') : '—', a.daysLeft !== null && a.daysLeft < 0 && a.level !== 'done');
+      add('Бюджет', a.budgetUse !== null ? pct(a.budgetUse) + ' из ' + money.format(p.budget) + ' ₽' : '—', a.budgetUse > 1);
+      if (p.leads != null && p.leads !== '') add('Лиды', money.format(p.leads) + (Number(p.leads) > 0 && Number(p.spent) > 0 ? ' · ' + money.format(p.spent / p.leads) + ' ₽' : ''));
+      c3.append(kv);
+
+      row.append(c1, c2, c3);
+      list.append(row);
+    }
+  }
+
+  /* Редактор */
+  function renderTasks() {
+    renderTplOpts();
+    const box = $('tasks'); box.replaceChildren();
+    if (!draftTasks.length) box.append(el('span', 'hint', 'Задач пока нет. Добавьте этапы работы: бриф, креативы, запуск, отчёт.'));
+    draftTasks.forEach((t, i) => {
+      const r = el('div', 'task' + (t.done ? ' is-done' : ''));
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!t.done; cb.id = 'task-cb-' + i; cb.setAttribute('aria-label', 'Выполнено');
+      cb.onchange = () => { t.done = cb.checked; renderTasks(); renderPreview(); };
+      const tx = el('input'); tx.type = 'text'; tx.value = t.t; tx.id = 'task-tx-' + i; tx.setAttribute('aria-label', 'Задача');
+      tx.oninput = () => { t.t = tx.value; };
+      const del = el('button', 'del', '×'); del.type = 'button'; del.setAttribute('aria-label', 'Удалить задачу');
+      del.onclick = () => { draftTasks.splice(i, 1); renderTasks(); renderPreview(); };
+      r.append(cb, tx, del); box.append(r);
+    });
+  }
+
+  function renderNowOpts() {
+    const box = $('now-opts'); box.replaceChildren();
+    const all = NOW_OPTIONS.concat(draftNow.filter((t) => !NOW_OPTIONS.includes(t)));
+    all.forEach((t) => {
+      const b = el('button', 'opt', t); b.type = 'button'; b.disabled = !canWrite;
+      b.setAttribute('aria-pressed', String(draftNow.includes(t)));
+      b.onclick = () => { draftNow = draftNow.includes(t) ? draftNow.filter((x) => x !== t) : draftNow.concat(t); renderNowOpts(); };
+      box.append(b);
+    });
+  }
+
+  function renderTplOpts() {
+    const name = $('f-tpl').value, box = $('tpl-opts');
+    box.replaceChildren();
+    const have = new Set(draftTasks.map((t) => t.t.trim().toLowerCase()));
+    const left = name ? TEMPLATES[name].filter((t) => !have.has(t.toLowerCase())) : [];
+    box.hidden = !name; $('tpl-all').hidden = !left.length;
+    if (name && !left.length) box.append(el('span', 'hint', 'Все задачи из этого шаблона уже добавлены.'));
+    left.forEach((t) => {
+      const b = el('button', 'opt add', t); b.type = 'button'; b.disabled = !canWrite;
+      b.onclick = () => { draftTasks.push({ t, done: false }); renderTasks(); renderPreview(); };
+      box.append(b);
+    });
+  }
+
+  function readForm() {
+    const num = (id) => { const v = $(id).value.trim(); return v === '' ? null : Number(v); };
+    return {
+      name: $('f-name').value.trim(), client: $('f-client').value.trim(), channel: $('f-channel').value.trim(),
+      now: $('f-now').value.trim(), nowTags: draftNow.slice(), owner: $('f-owner').value.trim(),
+      start: $('f-start').value || null, deadline: $('f-deadline').value || null,
+      budget: num('f-budget'), spent: num('f-spent'), leads: num('f-leads'),
+      manual: $('f-manual').value || null,
+      tasks: draftTasks.filter((t) => t.t.trim()).map((t) => ({ t: t.t.trim(), done: !!t.done })),
+    };
+  }
+
+  function renderPreview() {
+    const a = assess(readForm());
+    const pv = $('preview'); pv.replaceChildren();
+    const txt = el('div'); txt.append(el('b', null, LABEL[a.level] + (a.manual ? ' (вручную)' : '')), el('div', 'sub', a.reasons.join(' · ')));
+    pv.append(el('span', 'lamp ' + a.level), txt);
+  }
+
+  function openEditor(p) {
+    editing = p;
+    $('sheet-title').textContent = p ? 'Проект' : 'Новый проект';
+    const v = p || {};
+    $('f-name').value = v.name || ''; $('f-client').value = v.client || ''; $('f-channel').value = v.channel || '';
+    $('f-now').value = v.now || ''; $('f-owner').value = v.owner || '';
+    $('f-start').value = v.start || (p ? '' : new Date().toISOString().slice(0, 10));
+    $('f-deadline').value = v.deadline || '';
+    $('f-budget').value = v.budget ?? ''; $('f-spent').value = v.spent ?? ''; $('f-leads').value = v.leads ?? '';
+    $('f-manual').value = v.manual || '';
+    draftTasks = (v.tasks || []).map((t) => ({ ...t }));
+    draftNow = Array.isArray(v.nowTags) ? v.nowTags.slice() : [];
+    $('f-tpl').value = p ? '' : '';
+    $('f-newtask').value = '';
+    $('form-err').hidden = true;
+    $('del-btn').hidden = !p || !canWrite; disarmDelete();
+    $('save-btn').disabled = !canWrite;
+    document.querySelectorAll('#form input, #form textarea, #form select, #add-task').forEach((x) => { x.disabled = !canWrite; });
+    renderTasks(); renderNowOpts(); renderPreview();
+    $('scrim').hidden = false; $('sheet').hidden = false;
+    document.body.classList.add('locked');
+    $('sheet').querySelector('.body').scrollTop = 0;
+    if (window.matchMedia('(min-width: 761px)').matches) setTimeout(() => $('f-name').focus(), 30);
+  }
+  function closeEditor() { $('scrim').hidden = true; $('sheet').hidden = true; document.body.classList.remove('locked'); editing = null; }
+
+  function addTask() {
+    const v = $('f-newtask').value.trim(); if (!v) return;
+    draftTasks.push({ t: v, done: false }); $('f-newtask').value = ''; renderTasks(); renderPreview(); $('f-newtask').focus();
+  }
+
+  let armTimer = null;
+  function disarmDelete() { clearTimeout(armTimer); $('del-btn').classList.remove('armed'); $('del-btn').textContent = 'Удалить'; }
+
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 2200); }
+
+  function showErr(msg) { $('form-err').textContent = msg; $('form-err').hidden = false; }
+  function writeError(e) {
+    if (e && e.code === 'invalid_argument') { canWrite = false; return 'У вас нет прав менять проекты на этой странице. Попросите владельца дать доступ «Contributor» или выше.'; }
+    if (e && e.code === 'quota_exceeded') return 'Хранилище заполнено. Удалите старые проекты и попробуйте снова.';
+    return 'Не получилось сохранить. Проверьте интернет и нажмите «Сохранить» ещё раз.';
+  }
+
+  async function save() {
+    const data = readForm();
+    if (!data.name) { showErr('Впишите название проекта.'); $('f-name').focus(); return; }
+    if (data.start && data.deadline && data.deadline < data.start) { showErr('Дедлайн раньше даты старта. Проверьте даты.'); return; }
+    $('save-btn').disabled = true;
+    try {
+      const col = db.collection('projects');
+      const ref = editing ? col.doc(editing.id) : col.doc();
+      const body = { ...data, updatedAt: new Date().toISOString(), createdAt: editing?.createdAt || new Date().toISOString() };
+      if (editing && editing.example) body.example = true;
+      await ref.set(body);
+      closeEditor(); toast('Сохранено');
+    } catch (e) { showErr(writeError(e)); }
+    finally { $('save-btn').disabled = !canWrite; }
+  }
+
+  async function del() {
+    const b = $('del-btn');
+    if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Точно удалить?'; armTimer = setTimeout(disarmDelete, 4000); return; }
+    disarmDelete();
+    try { await db.collection('projects').doc(editing.id).delete(); closeEditor(); toast('Проект удалён'); }
+    catch (e) { showErr(writeError(e)); }
+  }
+
+  let clearArmed = false;
+  async function clearExamples() {
+    const b = $('clear-examples');
+    if (!clearArmed) { clearArmed = true; b.textContent = 'Точно удалить примеры?'; setTimeout(() => { clearArmed = false; b.textContent = 'Удалить все примеры'; }, 4000); return; }
+    clearArmed = false; b.textContent = 'Удалить все примеры';
+    try { for (const p of projects.filter((x) => x.example)) await db.collection('projects').doc(p.id).delete(); toast('Примеры удалены'); }
+    catch (e) { toast(writeError(e)); }
+  }
+
+  $('add-btn').onclick = () => openEditor(null);
+  $('fab').onclick = () => openEditor(null);
+  $('close-btn').onclick = closeEditor; $('cancel-btn').onclick = closeEditor; $('scrim').onclick = closeEditor;
+  $('save-btn').onclick = save; $('del-btn').onclick = del; $('add-task').onclick = addTask;
+  $('clear-examples').onclick = clearExamples;
+  Object.keys(TEMPLATES).forEach((k) => $('f-tpl').append(new Option(k, k)));
+  $('f-tpl').addEventListener('change', renderTplOpts);
+  $('tpl-all').onclick = () => {
+    const have = new Set(draftTasks.map((t) => t.t.trim().toLowerCase()));
+    (TEMPLATES[$('f-tpl').value] || []).forEach((t) => { if (!have.has(t.toLowerCase())) draftTasks.push({ t, done: false }); });
+    renderTasks(); renderPreview();
+  };
+  $('f-channel').addEventListener('change', () => {
+    const t = CHANNEL_TPL[$('f-channel').value.trim()];
+    if (t && !$('f-tpl').value) { $('f-tpl').value = t; renderTplOpts(); }
+  });
+  $('f-newtask').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTask(); } });
+  $('form').addEventListener('submit', (e) => e.preventDefault());
+  $('form').addEventListener('input', renderPreview);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').hidden) closeEditor(); });
+  document.querySelectorAll('.light').forEach((b) => { b.onclick = () => { filter = filter === b.dataset.f ? null : b.dataset.f; render(); }; });
+
+  function offline(msg) {
+    canWrite = false; $('add-btn').hidden = true; $('fab').hidden = true;
+    $('list').replaceChildren(el('div', 'empty', msg));
+  }
+
+  async function start() {
+    db = window.claude && claude.use ? await claude.use('db') : null;
+    if (!db) { offline('Не удалось подключиться к хранилищу проектов. Откройте страницу на claude.ai, войдя в свой аккаунт.'); return; }
+    try {
+      const user = await claude.use('user');
+      const w = user ? await user.can('data.write') : null;
+      if (w === false) { canWrite = false; $('add-btn').hidden = true; $('fab').hidden = true; }
+    } catch (_) {}
+    db.collection('projects').onSnapshot((snap) => {
+      projects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (editing && !projects.some((p) => p.id === editing.id)) closeEditor();
+      render();
+    }, () => offline('Связь с хранилищем прервалась. Обновите страницу.'));
+  }
+  start();
+})();
+</script>
