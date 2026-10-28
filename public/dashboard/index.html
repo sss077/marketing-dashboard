@@ -1,4 +1,54 @@
-<meta name="dash-one-writer">
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Маркетинг-проекты · Дашборд</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --color-bg: #f4f6f8; --color-panel: #ffffff; --color-fg: #17202a; --color-fg-muted: #5d6b78; --color-border-line: #dde3e9;
+  --color-ok: #1f8a4c; --color-warn: #b57a00; --color-bad: #c9372a;
+  --cds-chart-muted: #a7b2bd; --cds-chart-status-critical: #d33b2c; --cds-chart-grid: #e6ebef; --cds-chart-axis: #9aa6b1; --cds-chart-reference: #7c8a96;
+  --cds-surface-popover: #ffffff; --cds-border: #d5dce3; --cds-shadow-popover: 0 6px 24px rgba(20, 32, 44, .14); --cds-text-secondary: #5d6b78;
+  --font-anthropic-sans: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-anthropic-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --cds-font-size-caption: 12.5px; --cds-font-size-body: 14.5px; --cds-font-size-heading: 16px; --cds-font-size-title: 30px; --cds-font-weight-medium: 600;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 14px; --cds-gap-lg: 22px; --cds-gap-xl: 32px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 18px; --cds-pad-xl: 28px;
+  --cds-radius: 10px; --cds-dur-slow: .3s; --cds-ease-out: cubic-bezier(.2, .7, .2, 1);
+  --skeleton: #e7ecf0; --accent: #0f6b74;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-bg: #11161b; --color-panel: #182029; --color-fg: #e8edf2; --color-fg-muted: #93a1ae; --color-border-line: #2a3541;
+    --color-ok: #3ccb7b; --color-warn: #f2b630; --color-bad: #ff6a5a;
+    --cds-chart-muted: #5f6d7a; --cds-chart-status-critical: #ff6a5a; --cds-chart-grid: #26313c; --cds-chart-axis: #607080; --cds-chart-reference: #8796a5;
+    --cds-surface-popover: #1f2933; --cds-border: #34414e; --cds-shadow-popover: 0 6px 24px rgba(0, 0, 0, .5); --cds-text-secondary: #93a1ae;
+    --skeleton: #26313c; --accent: #3fb5bf;
+  }
+}
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: 14.5px; line-height: 1.45; }
+.site-nav { max-width: 1200px; margin-inline: auto; padding-top: max(14px, env(safe-area-inset-top, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 16px; font-weight: 600; }
+.site-nav a { color: var(--accent); text-decoration: none; }
+.site-nav a:hover { text-decoration: underline; }
+.site-nav span { color: var(--color-fg-muted); }
+#dash-root { max-width: 1200px; margin-inline: auto; padding-block: 18px max(48px, env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.dash-skeleton { color: transparent !important; background: var(--skeleton); border-radius: 6px; min-width: 3em; display: inline-block; }
+.mk-chart.dash-skeleton { display: block; }
+@media (max-width: 640px) { :root { --cds-font-size-title: 26px; } }
+</style>
+<script src="d3.min.js"></script>
+<script src="dash.js"></script>
+</head>
+<body>
+<nav class="site-nav"><a href="/">← Светофор проектов</a><span>Дашборд</span></nav>
+<div id="dash-root">
 <style>
   .mk { display: flex; flex-direction: column; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); }
   .mk-head { display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
@@ -395,3 +445,7 @@
     }
   });
 </script>
+
+</div>
+</body>
+</html>

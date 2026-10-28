@@ -1,5 +1,19 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Светофор">
+<meta name="theme-color" content="#f3f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11161b" media="(prefers-color-scheme: dark)">
+<style>
+html { -webkit-text-size-adjust: 100%; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+</style>
 <title>Светофор проектов</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -157,6 +171,8 @@ details.rules ul { margin: 10px 0 4px; padding-left: 20px; display: flex; flex-d
 .err { color: var(--red); font-size: 13px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; z-index: 30; }
 .fab { display: none; }
+.navlink { color: var(--accent); font-weight: 600; text-decoration: none; }
+.navlink:hover { text-decoration: underline; }
 body.locked { overflow: hidden; }
 button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
@@ -215,12 +231,14 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   @keyframes slide { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } }
 }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <div class="top">
     <div>
       <h1>Светофор проектов</h1>
       <p>Добавьте проект, распишите объём работ задачами и отмечайте, что сделано. Цвет считается сам: по срокам, выполненным задачам и бюджету.</p>
+      <p><a class="navlink" href="/dashboard/">Дашборд с графиками →</a></p>
     </div>
     <button class="btn primary" id="add-btn" type="button">+ Новый проект</button>
   </div>
@@ -615,20 +633,56 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     $('list').replaceChildren(el('div', 'empty', msg));
   }
 
+  /* Хранилище проектов на сайте: /api/projects (Netlify Functions + Blobs). Обновляется раз в 15 секунд и после каждого сохранения. */
+  function createDb() {
+    const listeners = new Set();
+    let loaded = false;
+    async function refresh() {
+      const r = await fetch('/api/projects', { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const rows = await r.json();
+      const snap = { docs: rows.map(({ id, ...d }) => ({ id, data: () => d })) };
+      loaded = true;
+      listeners.forEach((l) => l.next(snap));
+    }
+    async function send(method, id, body) {
+      let r;
+      try {
+        r = await fetch('/api/projects/' + encodeURIComponent(id), { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      } catch (_) { throw { code: 'unavailable' }; }
+      if (!r.ok) throw { code: r.status === 413 ? 'quota_exceeded' : 'unavailable' };
+      await refresh().catch(() => {});
+    }
+    const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return {
+      collection() {
+        return {
+          doc(id) { const key = id || newId(); return { id: key, set: (d) => send('PUT', key, d), delete: () => send('DELETE', key) }; },
+          onSnapshot(next, error) {
+            const l = { next }; listeners.add(l);
+            let fails = 0;
+            const tick = () => refresh().then(() => { fails = 0; }).catch(() => { if (!loaded && ++fails === 3 && error) error(); });
+            tick();
+            const t = setInterval(() => { if (!document.hidden) tick(); }, 15000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+            return () => { listeners.delete(l); clearInterval(t); };
+          },
+        };
+      },
+    };
+  }
+
   async function start() {
-    db = window.claude && claude.use ? await claude.use('db') : null;
-    if (!db) { offline('Не удалось подключиться к хранилищу проектов. Откройте страницу на claude.ai, войдя в свой аккаунт.'); return; }
-    try {
-      const user = await claude.use('user');
-      const w = user ? await user.can('data.write') : null;
-      if (w === false) { canWrite = false; $('add-btn').hidden = true; $('fab').hidden = true; }
-    } catch (_) {}
+    db = createDb();
     db.collection('projects').onSnapshot((snap) => {
       projects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       if (editing && !projects.some((p) => p.id === editing.id)) closeEditor();
       render();
-    }, () => offline('Связь с хранилищем прервалась. Обновите страницу.'));
+    }, () => offline('Не удалось загрузить проекты. Проверьте интернет и обновите страницу.'));
   }
   start();
 })();
 </script>
+
+</body>
+</html>
