@@ -226,6 +226,56 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   .grid2 { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Навигация, страница проекта, финансы */
+.tabs { display: flex; gap: 6px; }
+.tabs a { padding: 7px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; border: 1px solid var(--line); background: var(--surface); }
+.tabs a[aria-current="page"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--muted); }
+.big { font-family: var(--f-display); font-weight: 500; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.big small { font-family: var(--f-body); font-size: 14px; color: var(--muted); font-weight: 400; }
+.pv-head { display: flex; flex-direction: column; gap: 8px; }
+.pv-title { display: flex; align-items: center; gap: 12px; }
+.pv-title h1 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: clamp(22px, 4vw, 30px); text-wrap: balance; }
+.pv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.pv-grid .kv dd { text-align: right; }
+.fin-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; }
+.fin-kpis .card { gap: 4px; }
+.fin-kpis .l { font-size: 13px; color: var(--muted); }
+.month-nav { display: flex; align-items: center; gap: 12px; }
+.month-nav b { font-family: var(--f-display); font-weight: 500; font-size: 18px; min-width: 9em; text-align: center; text-transform: capitalize; }
+.chart { position: relative; min-height: 200px; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { font-family: var(--f-body); font-size: 12px; fill: var(--muted); }
+.chart .val { fill: var(--ink); font-weight: 600; }
+.ch-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.ch-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.fin-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.fin-row:first-child { border-top: 0; }
+.fin-row .nm { font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; padding: 7px 11px; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; border-left: 1px solid var(--line); }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"].paid { background: var(--green); color: var(--surface); }
+.seg button[aria-pressed="true"].unpaid { background: var(--yellow); color: var(--ink); }
+.seg button[aria-pressed="true"].left { background: var(--red); color: var(--surface); }
+.lock { max-width: 420px; }
+.lock form { display: flex; flex-direction: column; gap: 10px; }
+.lock input { font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.fin-box { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; background: var(--bg); }
+.fin-box .field input { background: var(--surface); }
+@media (max-width: 760px) {
+  .fin-row { grid-template-columns: minmax(0, 1fr); }
+  .fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fin-kpis .card:first-child { grid-column: 1 / -1; }
+  .seg { width: 100%; }
+  .seg button { flex: 1; min-height: 44px; font-size: 14px; }
+  .month-nav { justify-content: space-between; }
+  .month-nav .btn { min-width: 48px; }
+  .tabs a { padding: 9px 16px; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: slide .22s ease-out; }
   @keyframes slide { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } }
@@ -233,12 +283,12 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="view-list">
+  <nav class="tabs" aria-label="Разделы"><a href="#" aria-current="page">Проекты</a><a href="#finance">Финансы</a></nav>
   <div class="top">
     <div>
       <h1>DDL V</h1>
       <p>Добавьте проект, распишите объём работ задачами и отмечайте, что сделано. Цвет считается сам: по срокам, выполненным задачам и бюджету.</p>
-      <p><a class="navlink" href="/dashboard/">Дашборд с графиками →</a></p>
     </div>
     <button class="btn primary" id="add-btn" type="button">+ Новый проект</button>
   </div>
@@ -273,6 +323,62 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       <li>Цвет можно выставить вручную в карточке проекта. Тогда рядом будет пометка «вручную».</li>
     </ul>
   </details>
+</div>
+
+<div class="wrap" id="view-project" hidden>
+  <a class="navlink" href="#">← Все проекты</a>
+  <div class="empty" id="pv-missing" hidden><h2>Проект не найден</h2><span>Возможно, его удалили.</span><a class="navlink" href="#">К списку проектов</a></div>
+  <div id="pv-body" class="list">
+    <div class="pv-head">
+      <div class="pv-title"><span class="lamp" id="pv-lamp"></span><h1 id="pv-name">—</h1></div>
+      <div class="sub" id="pv-sub"></div>
+      <div class="chips" id="pv-chips"></div>
+      <div class="pv-actions"><button class="btn primary" id="pv-edit" type="button">Изменить проект</button><button class="btn" id="pv-copy" type="button">Скопировать ссылку</button></div>
+    </div>
+    <div class="pv-grid">
+      <section class="card"><h2>Прогресс</h2><div class="big" id="pv-progress">—</div><div class="meter" id="pv-meter"><i></i><s hidden></s></div><dl class="kv" id="pv-time"></dl></section>
+      <section class="card"><h2>Реклама</h2><div class="big" id="pv-spent">—</div><div class="meter" id="pv-bmeter"><i></i></div><dl class="kv" id="pv-ads"></dl></section>
+      <section class="card"><h2>Что делается сейчас</h2><div class="now-tags" id="pv-now"></div></section>
+    </div>
+    <section class="card"><h2>Объём работ</h2><span class="hint">Отмечайте задачи прямо здесь, изменения сохраняются сразу.</span><div class="tasks" id="pv-tasks"></div></section>
+  </div>
+</div>
+
+<div class="wrap" id="view-finance" hidden>
+  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#finance" aria-current="page">Финансы</a></nav>
+  <div class="top">
+    <div><h1>Финансы</h1><p>Видно только вам, по паролю. Сколько клиентов было в месяце, кто оплатил и сколько вы заработали.</p></div>
+    <button class="btn" id="fin-logout" type="button" hidden>Выйти</button>
+  </div>
+  <section class="card lock" id="fin-lock" hidden>
+    <h2 id="fin-lock-title">Введите пароль</h2>
+    <span class="hint" id="fin-lock-hint">Пароль вы придумали при первом входе.</span>
+    <form id="fin-lock-form" novalidate>
+      <input type="password" id="fin-pass" placeholder="Пароль" autocomplete="current-password">
+      <input type="password" id="fin-pass2" placeholder="Повторите пароль" autocomplete="new-password" hidden>
+      <button class="btn primary" id="fin-lock-btn" type="submit">Открыть</button>
+    </form>
+    <p class="err" id="fin-lock-err" hidden></p>
+  </section>
+  <div class="list" id="fin-body" hidden>
+    <div class="month-nav"><button class="btn" id="fin-prev" type="button" aria-label="Предыдущий месяц">‹</button><b id="fin-month">—</b><button class="btn" id="fin-next" type="button" aria-label="Следующий месяц">›</button></div>
+    <div class="fin-kpis">
+      <div class="card"><span class="l">Доход за месяц</span><span class="big" id="k-income">—</span><span class="hint" id="k-income-sub"></span></div>
+      <div class="card"><span class="l">Клиентов</span><span class="big" id="k-clients">—</span></div>
+      <div class="card"><span class="l">Оплатили</span><span class="big" id="k-paid">—</span></div>
+      <div class="card"><span class="l">Ждём оплату</span><span class="big" id="k-wait">—</span></div>
+      <div class="card"><span class="l">Ушли</span><span class="big" id="k-left">—</span></div>
+    </div>
+    <div class="pv-grid">
+      <section class="card"><h2>Доход по месяцам, $</h2><div class="chart" id="ch-income"></div></section>
+      <section class="card"><h2>Клиенты по месяцам</h2><div class="ch-legend"><span><i style="background:var(--green)"></i>Оплатили</span><span><i style="background:var(--yellow)"></i>Ждём оплату</span><span><i style="background:var(--red)"></i>Ушли</span></div><div class="chart" id="ch-clients"></div></section>
+    </div>
+    <section class="card">
+      <h2>Клиенты за месяц</h2>
+      <span class="hint">Отмечайте, кто оплатил. «Ушёл» убирает клиента из следующих месяцев. Сумму и месяц начала работы меняйте в карточке проекта.</span>
+      <div id="fin-list"></div>
+    </section>
+  </div>
 </div>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -314,12 +420,24 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       <div class="field"><label for="f-deadline">Дедлайн</label><input id="f-deadline" type="date"></div>
     </div>
     <div class="grid2">
-      <div class="field"><label for="f-budget">Бюджет, $</label><input id="f-budget" type="number" min="0" step="1" inputmode="numeric"></div>
-      <div class="field"><label for="f-spent">Потрачено, $</label><input id="f-spent" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="f-budget">Рекламный бюджет, $</label><input id="f-budget" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="f-spent">Потрачено на рекламу, $</label><input id="f-spent" type="number" min="0" step="1" inputmode="numeric"></div>
     </div>
     <div class="grid2">
       <div class="field"><label for="f-leads">Лиды</label><input id="f-leads" type="number" min="0" inputmode="numeric"></div>
       <div class="field"><label for="f-owner">Ответственный</label><input id="f-owner" placeholder="Кто ведёт"></div>
+    </div>
+    <div class="field fin-box" id="fin-edit">
+      <span class="lbl">Оплата клиента · видно только вам</span>
+      <div id="fe-locked" class="field">
+        <span class="hint" id="fe-hint">Чтобы указать, сколько платит клиент, введите пароль от «Финансов».</span>
+        <div class="addtask"><input type="password" id="fe-pass" placeholder="Пароль" autocomplete="current-password"><button class="btn" id="fe-unlock" type="button">Открыть</button></div>
+        <p class="err" id="fe-err" hidden></p>
+      </div>
+      <div id="fe-open" class="grid2" hidden>
+        <div class="field"><label for="f-fee">Платит в месяц, $</label><input id="f-fee" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label for="f-feestart">Платит с месяца</label><input id="f-feestart" type="month"></div>
+      </div>
     </div>
     <div class="field">
       <label for="f-manual">Цвет светофора</label>
@@ -367,6 +485,12 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   const CHANNEL_TPL = { 'Яндекс Директ': 'Реклама (Директ, VK, Google, Meta)', 'VK Реклама': 'Реклама (Директ, VK, Google, Meta)', 'Google Ads': 'Реклама (Директ, VK, Google, Meta)', 'Meta Ads': 'Реклама (Директ, VK, Google, Meta)', 'Telegram Ads': 'Реклама (Директ, VK, Google, Meta)', 'SMM': 'SMM', 'Контент': 'SMM', 'SEO': 'SEO', 'Email': 'Email-маркетинг', 'Инфлюенсеры': 'Блогеры' };
 
   let db = null, projects = [], filter = null, editing = null, draftTasks = [], draftNow = [], canWrite = true;
+  let currentId = null, finToken = null, finRecords = [], finConfigured = null, finMonth = null, finSetupMode = false;
+  try { finToken = localStorage.getItem('ddlv-fin-token'); } catch (_) {}
+
+  const monthKey = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const shiftMonth = (m, n) => { const [y, mo] = m.split('-').map(Number); return monthKey(new Date(y, mo - 1 + n, 1)); };
+  const monthName = (m, short) => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleDateString('ru-RU', short ? { month: 'short' } : { month: 'long', year: 'numeric' }).replace(' г.', ''); };
 
   function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
 
@@ -426,7 +550,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     for (const { p, a } of shown) {
       const row = el('button', 'row'); row.type = 'button';
       row.setAttribute('aria-label', (p.name || 'Без названия') + ', ' + LABEL[a.level]);
-      row.onclick = () => openEditor(p);
+      row.onclick = () => { location.hash = 'project-' + p.id; };
       row.append(el('span', 'stripe ' + a.level));
 
       const c1 = el('div', 'cell');
@@ -543,8 +667,13 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     $('f-manual').value = v.manual || '';
     draftTasks = (v.tasks || []).map((t) => ({ ...t }));
     draftNow = Array.isArray(v.nowTags) ? v.nowTags.slice() : [];
-    $('f-tpl').value = p ? '' : '';
+    $('f-tpl').value = '';
     $('f-newtask').value = '';
+    const fr = p ? finRecords.find((r) => r.id === p.id) : null;
+    $('f-fee').value = fr?.fee ?? '';
+    $('f-feestart').value = fr?.startMonth || monthKey(new Date());
+    $('fe-pass').value = ''; $('fe-err').hidden = true;
+    renderFinEdit();
     $('form-err').hidden = true;
     $('del-btn').hidden = !p || !canWrite; disarmDelete();
     $('save-btn').disabled = !canWrite;
@@ -585,6 +714,14 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       const body = { ...data, updatedAt: new Date().toISOString(), createdAt: editing?.createdAt || new Date().toISOString() };
       if (editing && editing.example) body.example = true;
       await ref.set(body);
+      const fee = $('f-fee').value.trim();
+      const hadFin = finRecords.some((r) => r.id === ref.id);
+      if (finToken && (fee !== '' || hadFin)) {
+        try {
+          await finApi('PUT', ref.id, { name: data.name, client: data.client, fee: fee === '' ? 0 : Number(fee), startMonth: $('f-feestart').value || monthKey(new Date()) });
+          await loadFinance();
+        } catch (e) { closeEditor(); toast('Проект сохранён, но оплату сохранить не удалось'); return; }
+      }
       closeEditor(); toast('Сохранено');
     } catch (e) { showErr(writeError(e)); }
     finally { $('save-btn').disabled = !canWrite; }
@@ -594,7 +731,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     const b = $('del-btn');
     if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Точно удалить?'; armTimer = setTimeout(disarmDelete, 4000); return; }
     disarmDelete();
-    try { await db.collection('projects').doc(editing.id).delete(); closeEditor(); toast('Проект удалён'); }
+    try { await db.collection('projects').doc(editing.id).delete(); closeEditor(); toast('Проект удалён'); if (location.hash.startsWith('#project-')) location.hash = ''; }
     catch (e) { showErr(writeError(e)); }
   }
 
@@ -678,9 +815,293 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     db.collection('projects').onSnapshot((snap) => {
       projects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       if (editing && !projects.some((p) => p.id === editing.id)) closeEditor();
+      loaded = true;
       render();
+      if (currentId) renderProject();
+      if (location.hash === '#finance' && finToken) renderFinance();
     }, () => offline('Не удалось загрузить проекты. Проверьте интернет и обновите страницу.'));
   }
+
+  /* Страница проекта */
+  let loaded = false;
+  function renderProject() {
+    const p = projects.find((x) => x.id === currentId);
+    $('pv-missing').hidden = !!p || !loaded;
+    $('pv-body').hidden = !p;
+    if (!p) return;
+    const a = assess(p);
+    document.title = (p.name || 'Проект') + ' · DDL V';
+    $('pv-lamp').className = 'lamp ' + a.level;
+    $('pv-name').textContent = p.name || 'Без названия';
+    $('pv-sub').textContent = [p.client, p.channel, p.owner && 'ведёт: ' + p.owner].filter(Boolean).join(' · ');
+    const chips = $('pv-chips'); chips.replaceChildren();
+    chips.append(el('span', 'chip ' + a.level, LABEL[a.level] + (a.manual ? ' (вручную)' : '')));
+    a.reasons.forEach((r) => chips.append(el('span', 'chip ' + (a.auto === 'green' || a.level === 'done' ? a.level : a.auto), r)));
+    $('pv-edit').hidden = !canWrite;
+
+    $('pv-progress').replaceChildren(document.createTextNode(a.total ? pct(a.progress) : '—'), el('small', null, ' · сделано ' + a.done + ' из ' + a.total));
+    const fill = $('pv-meter').querySelector('i'), tick = $('pv-meter').querySelector('s');
+    fill.style.width = (a.progress * 100) + '%'; fill.style.background = a.level === 'done' ? 'var(--done)' : 'var(--accent)';
+    tick.hidden = a.timeShare === null;
+    if (a.timeShare !== null) tick.style.left = 'calc(' + (a.timeShare * 100) + '% - 1px)';
+    const kv = (box, rows) => { box.replaceChildren(); rows.forEach(([k, v, warn]) => { box.append(el('dt', null, k), el('dd', 'mono' + (warn ? ' warn' : ''), v)); }); };
+    kv($('pv-time'), [
+      ['Старт', p.start ? fmtDate(p.start) : '—'],
+      ['Дедлайн', p.deadline ? fmtDate(p.deadline) : '—', a.daysLeft !== null && a.daysLeft < 0 && a.level !== 'done'],
+      ['Осталось', a.daysLeft === null || a.level === 'done' ? '—' : a.daysLeft >= 0 ? a.daysLeft + ' дн.' : 'просрочен', a.daysLeft !== null && a.daysLeft < 0 && a.level !== 'done'],
+      ['Прошло срока', a.timeShare === null ? '—' : pct(a.timeShare)],
+    ]);
+
+    const spent = Number(p.spent) || 0, budget = Number(p.budget) || 0, leads = Number(p.leads) || 0;
+    $('pv-spent').replaceChildren(document.createTextNode('$' + money.format(spent)), el('small', null, budget ? ' из $' + money.format(budget) : ' потрачено'));
+    const bfill = $('pv-bmeter').querySelector('i');
+    bfill.style.width = Math.min(100, (a.budgetUse || 0) * 100) + '%';
+    bfill.style.background = a.budgetUse > 1 ? 'var(--red)' : 'var(--accent)';
+    kv($('pv-ads'), [
+      ['Освоено', a.budgetUse === null ? '—' : pct(a.budgetUse), a.budgetUse > 1],
+      ['Остаток', budget ? '$' + money.format(budget - spent) : '—', budget && spent > budget],
+      ['Лиды', p.leads == null || p.leads === '' ? '—' : money.format(leads)],
+      ['Цена лида', leads > 0 && spent > 0 ? '$' + cents.format(spent / leads) : '—'],
+    ]);
+
+    const now = $('pv-now'); now.replaceChildren();
+    const tags = Array.isArray(p.nowTags) ? p.nowTags : [];
+    tags.forEach((t) => now.append(el('span', 'now-tag', t)));
+    if (p.now) now.append(el('span', null, p.now));
+    if (!tags.length && !p.now) now.append(el('span', 'hint', 'Не указано. Нажмите «Изменить проект», чтобы выбрать.'));
+
+    const box = $('pv-tasks'); box.replaceChildren();
+    const tasks = Array.isArray(p.tasks) ? p.tasks : [];
+    if (!tasks.length) box.append(el('span', 'hint', 'Задач пока нет. Нажмите «Изменить проект» и выберите шаблон работ.'));
+    tasks.forEach((t, i) => {
+      const r = el('label', 'task' + (t.done ? ' is-done' : ''));
+      r.style.gridTemplateColumns = 'auto minmax(0, 1fr)';
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!t.done; cb.id = 'pv-task-' + i; cb.disabled = !canWrite;
+      cb.onchange = () => toggleTask(p, i, cb.checked);
+      const tx = el('span', null, t.t);
+      if (t.done) { tx.style.textDecoration = 'line-through'; tx.style.color = 'var(--muted)'; }
+      r.append(cb, tx); box.append(r);
+    });
+  }
+
+  async function toggleTask(p, i, done) {
+    const { id, ...data } = p;
+    const tasks = (data.tasks || []).map((t, j) => (j === i ? { ...t, done } : t));
+    p.tasks = tasks; renderProject(); render();
+    try { await db.collection('projects').doc(id).set({ ...data, tasks, updatedAt: new Date().toISOString() }); }
+    catch (e) { toast('Не получилось сохранить. Проверьте интернет.'); }
+  }
+
+  $('pv-edit').onclick = () => { const p = projects.find((x) => x.id === currentId); if (p) openEditor(p); };
+  $('pv-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); toast('Ссылка скопирована'); }
+    catch (_) { toast(location.href); }
+  };
+
+  /* Финансы */
+  async function finApi(method, path, body) {
+    const r = await fetch('/api/finance' + (path ? '/' + encodeURIComponent(path) : ''), {
+      method, cache: 'no-store',
+      headers: { 'content-type': 'application/json', ...(finToken ? { 'x-finance-token': finToken } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 401 && path !== 'login') setToken(null);
+    if (!r.ok) throw Object.assign(new Error(data.error || 'HTTP ' + r.status), { status: r.status });
+    return data;
+  }
+  function setToken(t) {
+    finToken = t;
+    try { t ? localStorage.setItem('ddlv-fin-token', t) : localStorage.removeItem('ddlv-fin-token'); } catch (_) {}
+    if (!t) finRecords = [];
+  }
+  async function loadFinance() { finRecords = await finApi('GET'); }
+  async function checkConfigured() {
+    if (finConfigured === null) { try { finConfigured = (await finApi('GET', 'status')).configured; } catch (_) { finConfigured = true; } }
+    return finConfigured;
+  }
+
+  function statusIn(r, m) {
+    if (!r.startMonth || m < r.startMonth) return null;
+    const pay = r.payments || {};
+    const leftAt = Object.keys(pay).filter((k) => pay[k] && pay[k].s === 'left').sort()[0];
+    if (leftAt && m > leftAt) return null;
+    return pay[m] ? pay[m].s : 'pending';
+  }
+  function monthStats(m) {
+    const s = { clients: 0, paid: 0, wait: 0, left: 0, income: 0, expected: 0 };
+    finRecords.forEach((r) => {
+      const st = statusIn(r, m); if (!st) return;
+      s.clients++;
+      const fee = r.payments?.[m]?.fee ?? (Number(r.fee) || 0);
+      if (st === 'paid') { s.paid++; s.income += fee; s.expected += fee; }
+      else if (st === 'left') s.left++;
+      else { s.wait++; s.expected += Number(r.fee) || 0; }
+    });
+    return s;
+  }
+
+  async function enterFinance() {
+    $('fin-lock-err').hidden = true;
+    if (!finToken) {
+      const configured = await checkConfigured();
+      finSetupMode = !configured;
+      $('fin-lock-title').textContent = configured ? 'Введите пароль' : 'Придумайте пароль';
+      $('fin-lock-hint').textContent = configured ? 'Пароль от «Финансов», который вы придумали при первом входе.' : 'Этот раздел будет открываться только по паролю. Запомните его: восстановить пароль нельзя.';
+      $('fin-pass2').hidden = configured;
+      $('fin-lock-btn').textContent = configured ? 'Открыть' : 'Сохранить пароль';
+      $('fin-lock').hidden = false; $('fin-body').hidden = true; $('fin-logout').hidden = true;
+      return;
+    }
+    $('fin-lock').hidden = true; $('fin-body').hidden = false; $('fin-logout').hidden = false;
+    finMonth = finMonth || monthKey(new Date());
+    try { await loadFinance(); } catch (e) { if (!finToken) { enterFinance(); return; } toast('Не удалось загрузить финансы'); }
+    renderFinance();
+  }
+
+  function renderFinance() {
+    if (!finToken || $('fin-body').hidden) return;
+    $('fin-month').textContent = monthName(finMonth);
+    const s = monthStats(finMonth);
+    $('k-income').textContent = '$' + money.format(s.income);
+    $('k-income-sub').textContent = s.expected > s.income ? 'ожидаем ещё $' + money.format(s.expected - s.income) : (s.clients ? 'оплачено всё' : '');
+    $('k-clients').textContent = s.clients; $('k-paid').textContent = s.paid; $('k-wait').textContent = s.wait; $('k-left').textContent = s.left;
+
+    const n = window.innerWidth > 760 ? 12 : 6;
+    const months = Array.from({ length: n }, (_, i) => shiftMonth(finMonth, i - n + 1));
+    const stats = months.map((m) => ({ m, ...monthStats(m) }));
+    barChart($('ch-income'), stats, (d) => [{ v: d.income, c: 'var(--accent)' }], (d) => d.income ? '$' + compactMoney(d.income) : '');
+    barChart($('ch-clients'), stats, (d) => [{ v: d.paid, c: 'var(--green)' }, { v: d.wait, c: 'var(--yellow)' }, { v: d.left, c: 'var(--red)' }], (d) => d.clients ? String(d.clients) : '');
+
+    const list = $('fin-list'); list.replaceChildren();
+    const rows = finRecords.map((r) => ({ r, st: statusIn(r, finMonth) })).filter((x) => x.st)
+      .sort((x, y) => (x.r.name || '').localeCompare(y.r.name || '', 'ru'));
+    if (!rows.length) {
+      list.append(el('div', 'hint', finRecords.length ? 'В этом месяце клиентов нет.' : 'Пока нет клиентов с оплатой. Откройте проект, нажмите «Изменить проект» и укажите в блоке «Оплата клиента», сколько он платит в месяц.'));
+      return;
+    }
+    rows.forEach(({ r, st }) => {
+      const row = el('div', 'fin-row');
+      const info = el('div');
+      const proj = projects.find((p) => p.id === r.id);
+      info.append(el('div', 'nm', r.name || proj?.name || 'Без названия'), el('div', 'sub', [r.client || proj?.client, '$' + money.format(r.payments?.[finMonth]?.fee ?? r.fee ?? 0) + ' в месяц'].filter(Boolean).join(' · ')));
+      const seg = el('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Статус оплаты');
+      [['paid', 'Оплатил'], ['unpaid', 'Не оплатил'], ['left', 'Ушёл']].forEach(([k, label]) => {
+        const b = el('button', k, label); b.type = 'button';
+        b.setAttribute('aria-pressed', String(st === k));
+        b.onclick = () => setPayment(r, st === k ? null : k);
+        seg.append(b);
+      });
+      row.append(info, seg); list.append(row);
+    });
+  }
+
+  async function setPayment(r, s) {
+    const value = s ? { s, fee: Number(r.fee) || 0 } : null;
+    r.payments = { ...(r.payments || {}) };
+    if (value) r.payments[finMonth] = value; else delete r.payments[finMonth];
+    renderFinance();
+    try { await finApi('PUT', r.id, { payments: { [finMonth]: value } }); }
+    catch (e) { toast('Не получилось сохранить. Проверьте интернет.'); try { await loadFinance(); } catch (_) {} renderFinance(); }
+  }
+
+  const compactMoney = (v) => v >= 10000 ? new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(v) : money.format(v);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs, text) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+  function barChart(box, data, parts, label) {
+    box.replaceChildren();
+    const W = Math.max(280, box.clientWidth || 320), H = 200, top = 22, bottom = 26;
+    const max = Math.max(1, ...data.map((d) => parts(d).reduce((a, p) => a + p.v, 0)));
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' });
+    const step = W / data.length, bw = Math.min(36, step * 0.62);
+    svg.append(svgEl('line', { x1: 0, x2: W, y1: H - bottom + 0.5, y2: H - bottom + 0.5, stroke: 'var(--line)' }));
+    data.forEach((d, i) => {
+      const x = i * step + (step - bw) / 2;
+      let y = H - bottom;
+      const g = svgEl('g', { opacity: d.m === finMonth ? 1 : 0.55 });
+      parts(d).forEach((p) => {
+        if (!p.v) return;
+        const h = (p.v / max) * (H - top - bottom);
+        y -= h;
+        g.append(svgEl('rect', { x, y, width: bw, height: Math.max(1, h), fill: p.c, rx: 3 }));
+      });
+      const t = label(d);
+      if (t) g.append(svgEl('text', { x: x + bw / 2, y: y - 6, 'text-anchor': 'middle', class: 'val' }, t));
+      g.append(svgEl('text', { x: x + bw / 2, y: H - 8, 'text-anchor': 'middle' }, monthName(d.m, true).replace('.', '')));
+      g.style.cursor = 'pointer';
+      g.addEventListener('click', () => { finMonth = d.m; renderFinance(); });
+      svg.append(g);
+    });
+    box.append(svg);
+  }
+
+  $('fin-lock-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pass = $('fin-pass').value, err = $('fin-lock-err');
+    err.hidden = true;
+    if (finSetupMode) {
+      if (pass.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов.'; err.hidden = false; return; }
+      if (pass !== $('fin-pass2').value) { err.textContent = 'Пароли не совпадают.'; err.hidden = false; return; }
+    }
+    $('fin-lock-btn').disabled = true;
+    try {
+      const { token } = await finApi('POST', finSetupMode ? 'setup' : 'login', { password: pass });
+      setToken(token); finConfigured = true;
+      $('fin-pass').value = ''; $('fin-pass2').value = '';
+      await enterFinance();
+    } catch (ex) {
+      err.textContent = ex.status === 401 ? 'Неверный пароль.' : ex.status === 409 ? 'Пароль уже задан. Обновите страницу и войдите.' : 'Не получилось. Проверьте интернет и попробуйте ещё раз.';
+      err.hidden = false;
+    } finally { $('fin-lock-btn').disabled = false; }
+  });
+  $('fin-logout').onclick = () => { setToken(null); enterFinance(); };
+  $('fin-prev').onclick = () => { finMonth = shiftMonth(finMonth, -1); renderFinance(); };
+  $('fin-next').onclick = () => { finMonth = shiftMonth(finMonth, 1); renderFinance(); };
+
+  /* Блок оплаты в форме проекта */
+  async function renderFinEdit() {
+    const open = !!finToken;
+    $('fe-open').hidden = !open; $('fe-locked').hidden = open;
+    if (!open) {
+      const configured = await checkConfigured();
+      $('fe-hint').textContent = configured ? 'Чтобы указать, сколько платит клиент, введите пароль от «Финансов».' : 'Сначала придумайте пароль в разделе «Финансы». Потом здесь можно будет указать, сколько платит клиент.';
+      $('fe-pass').parentElement.hidden = !configured;
+    }
+  }
+  $('fe-unlock').onclick = async () => {
+    $('fe-err').hidden = true;
+    try {
+      const { token } = await finApi('POST', 'login', { password: $('fe-pass').value });
+      setToken(token); await loadFinance();
+      const fr = editing ? finRecords.find((r) => r.id === editing.id) : null;
+      $('f-fee').value = fr?.fee ?? ''; $('f-feestart').value = fr?.startMonth || monthKey(new Date());
+      renderFinEdit();
+    } catch (ex) { $('fe-err').textContent = ex.status === 401 ? 'Неверный пароль.' : 'Не получилось. Проверьте интернет.'; $('fe-err').hidden = false; }
+  };
+  $('fe-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('fe-unlock').click(); } });
+
+  /* Переходы между страницами */
+  function route() {
+    const h = location.hash.slice(1);
+    currentId = h.startsWith('project-') ? h.slice(8) : null;
+    const fin = h === 'finance';
+    $('view-list').hidden = !!currentId || fin;
+    $('view-project').hidden = !currentId;
+    $('view-finance').hidden = !fin;
+    $('fab').hidden = !!currentId || fin || !canWrite;
+    document.title = fin ? 'Финансы · DDL V' : 'DDL V';
+    if (!$('sheet').hidden) closeEditor();
+    if (currentId) renderProject();
+    if (fin) enterFinance();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', route);
+  route();
+  if (finToken) loadFinance().catch(() => {});
+
+  let lastW = window.innerWidth;
+  window.addEventListener('resize', () => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; renderFinance(); } });
+
   start();
 })();
 </script>

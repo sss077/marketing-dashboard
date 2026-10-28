@@ -3,6 +3,11 @@
   functions = "netlify/functions"
 
 [[redirects]]
+  from = "/dashboard/*"
+  to = "/"
+  status = 301
+
+[[redirects]]
   from = "/dashboard"
-  to = "/dashboard/"
+  to = "/"
   status = 301
