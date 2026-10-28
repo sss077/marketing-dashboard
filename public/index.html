@@ -314,8 +314,8 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       <div class="field"><label for="f-deadline">Дедлайн</label><input id="f-deadline" type="date"></div>
     </div>
     <div class="grid2">
-      <div class="field"><label for="f-budget">Бюджет, ₽</label><input id="f-budget" type="number" min="0" step="1000" inputmode="numeric"></div>
-      <div class="field"><label for="f-spent">Потрачено, ₽</label><input id="f-spent" type="number" min="0" step="1000" inputmode="numeric"></div>
+      <div class="field"><label for="f-budget">Бюджет, $</label><input id="f-budget" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="f-spent">Потрачено, $</label><input id="f-spent" type="number" min="0" step="1" inputmode="numeric"></div>
     </div>
     <div class="grid2">
       <div class="field"><label for="f-leads">Лиды</label><input id="f-leads" type="number" min="0" inputmode="numeric"></div>
@@ -348,6 +348,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   const $ = (id) => document.getElementById(id);
   const DAY = 864e5;
   const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+  const cents = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   const pct = (v) => Math.round(v * 100) + '%';
   const fmtDate = (s) => new Date(s + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   const LABEL = { red: 'Красный', yellow: 'Жёлтый', green: 'Зелёный', done: 'Готово' };
@@ -460,8 +461,8 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       const kv = el('dl', 'kv');
       const add = (k, v, warn) => { kv.append(el('dt', null, k)); const dd = el('dd', 'mono' + (warn ? ' warn' : ''), v); kv.append(dd); };
       add('Дедлайн', p.deadline ? fmtDate(p.deadline) + (a.daysLeft !== null && a.level !== 'done' ? (a.daysLeft >= 0 ? ' · ' + a.daysLeft + ' дн.' : ' · просрочен') : '') : '—', a.daysLeft !== null && a.daysLeft < 0 && a.level !== 'done');
-      add('Бюджет', a.budgetUse !== null ? pct(a.budgetUse) + ' из ' + money.format(p.budget) + ' ₽' : '—', a.budgetUse > 1);
-      if (p.leads != null && p.leads !== '') add('Лиды', money.format(p.leads) + (Number(p.leads) > 0 && Number(p.spent) > 0 ? ' · ' + money.format(p.spent / p.leads) + ' ₽' : ''));
+      add('Бюджет', a.budgetUse !== null ? pct(a.budgetUse) + ' из $' + money.format(p.budget) : '—', a.budgetUse > 1);
+      if (p.leads != null && p.leads !== '') add('Лиды', money.format(p.leads) + (Number(p.leads) > 0 && Number(p.spent) > 0 ? ' · $' + cents.format(p.spent / p.leads) + ' за лид' : ''));
       c3.append(kv);
 
       row.append(c1, c2, c3);

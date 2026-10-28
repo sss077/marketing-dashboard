@@ -109,12 +109,12 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
   <section class="mk-tiles" id="kpi" aria-label="Главные цифры">
     <div class="mk-tile">
       <span class="mk-label">Выручка · 12 недель</span>
-      <span class="mk-big"><span data-draw="revenue" data-source="totals" data-field="revenue" data-row="0">—</span> ₽</span>
+      <span class="mk-big">$<span data-draw="revenue" data-source="totals" data-field="revenue" data-row="0">—</span></span>
       <span class="mk-sub"><b data-draw="rev-delta" data-source="trend4" data-field="revenue_delta" data-row="0">—</b> за последние 4 нед.</span>
     </div>
     <div class="mk-tile">
       <span class="mk-label">Расход · 12 недель</span>
-      <span class="mk-big"><span data-draw="spent" data-source="totals" data-field="spent" data-row="0">—</span> ₽</span>
+      <span class="mk-big">$<span data-draw="spent" data-source="totals" data-field="spent" data-row="0">—</span></span>
       <span class="mk-sub">Освоено <span data-draw="budget-use" data-source="totals" data-field="budget_use" data-row="0">—</span> бюджета</span>
     </div>
     <div class="mk-tile">
@@ -124,7 +124,7 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
     </div>
     <div class="mk-tile">
       <span class="mk-label">CPL, цена лида</span>
-      <span class="mk-big"><span data-draw="cpl" data-source="totals" data-field="cpl" data-row="0">—</span> ₽</span>
+      <span class="mk-big">$<span data-draw="cpl" data-source="totals" data-field="cpl" data-row="0">—</span></span>
       <span class="mk-sub">Расход ÷ лиды</span>
     </div>
     <div class="mk-tile">
@@ -137,7 +137,7 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
   <section class="mk-grid">
     <div class="mk-card" id="weekly-chart">
       <h2>Расход и выручка по неделям</h2>
-      <p class="mk-note">Все проекты вместе, ₽ в неделю.</p>
+      <p class="mk-note">Все проекты вместе, $ в неделю.</p>
       <div class="mk-legend"><span><i class="mk-sw" data-draw="sw0">—</i>Выручка</span><span><i class="mk-sw mk-sw-1"></i>Расход</span></div>
       <div class="mk-chart" data-draw="weekly" data-source="weekly_totals"></div>
     </div>
@@ -160,8 +160,8 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
             <th data-field="channel" class="mk-hide-narrow"><button type="button" data-sort="channel">Канал</button></th>
             <th data-field="spent"><button type="button" data-sort="budget_use">Расход / бюджет</button></th>
             <th data-field="leads" class="num"><button type="button" data-sort="leads">Лиды</button></th>
-            <th data-source="proj_metrics" data-field="cpl" class="num mk-hide-narrow"><button type="button" data-sort="cpl">CPL, ₽</button></th>
-            <th data-field="revenue" class="num mk-hide-narrow"><button type="button" data-sort="revenue">Выручка, ₽</button></th>
+            <th data-source="proj_metrics" data-field="cpl" class="num mk-hide-narrow"><button type="button" data-sort="cpl">CPL, $</button></th>
+            <th data-field="revenue" class="num mk-hide-narrow"><button type="button" data-sort="revenue">Выручка, $</button></th>
             <th data-source="proj_metrics" data-field="romi" class="num"><button type="button" data-sort="romi">ROMI</button></th>
             <th data-field="deadline"><button type="button" data-sort="deadline">Дедлайн</button></th>
           </tr>
@@ -342,8 +342,8 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
         dot.style('display', null).attr('cx', x(r.date)).attr('cy', y(r.revenue));
         tip.style('display', null).html('');
         tip.append('div').attr('class', 'mk-tip-d').text('Неделя с ' + dfmt(r.date));
-        tip.append('div').text('Выручка: ' + whole.format(r.revenue) + ' ₽');
-        tip.append('div').text('Расход: ' + whole.format(r.spend) + ' ₽');
+        tip.append('div').text('Выручка: $' + whole.format(r.revenue));
+        tip.append('div').text('Расход: $' + whole.format(r.spend));
         tip.append('div').text('Лиды: ' + whole.format(r.leads));
         const tw = tip.node().offsetWidth, px = (x(r.date) / W) * el.clientWidth;
         tip.style('left', Math.max(0, Math.min(el.clientWidth - tw, px + 12)) + 'px').style('top', '8px');
