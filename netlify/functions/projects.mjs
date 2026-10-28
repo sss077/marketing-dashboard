@@ -1,5 +1,5 @@
 import { getStore } from "@netlify/blobs";
-import seed from "./seed.mjs";
+import seed from "../seed.mjs";
 
 // Хранилище проектов светофора: один blob на проект.
 // GET /api/projects — все проекты, PUT /api/projects/:id — сохранить, DELETE /api/projects/:id — удалить.
