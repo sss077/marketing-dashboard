@@ -204,7 +204,8 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   .sheet .body { padding: 16px; gap: 18px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .sheet footer { padding: 12px 16px; }
   .sheet footer .btn { min-height: 48px; }
-  .sheet footer .right { flex: 1; justify-content: flex-end; }
+  .sheet footer { justify-content: flex-start; }
+  .sheet footer .right { justify-content: flex-start; }
   .x { min-width: 44px; min-height: 44px; font-size: 28px; }
   .btn { min-height: 44px; }
   .field input, .field textarea, .field select { font-size: 16px; min-height: 46px; padding: 10px 12px; border-radius: 10px; }
@@ -472,11 +473,11 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     <p class="err" id="form-err" hidden></p>
   </form>
   <footer>
-    <button class="btn danger" id="del-btn" type="button">Удалить</button>
     <div class="right">
-      <button class="btn" id="cancel-btn" type="button">Отмена</button>
       <button class="btn primary" id="save-btn" type="button">Сохранить</button>
+      <button class="btn" id="cancel-btn" type="button">Отмена</button>
     </div>
+    <button class="btn danger" id="del-btn" type="button">Удалить</button>
   </footer>
 </aside>
 <button class="fab" id="fab" type="button">+ Новый проект</button>
