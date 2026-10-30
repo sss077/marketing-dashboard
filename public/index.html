@@ -379,7 +379,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 <div class="wrap" id="view-tasks" hidden>
   <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#tasks" aria-current="page">Задачи</a><a href="#finance">Финансы</a></nav>
   <div class="top">
-    <div><h1>Задачи</h1><p>Те же задачи, что в Telegram-боте. Пишите так же, как боту: «завтра в 10 позвонить автошколе», «каждый понедельник в 9 планёрка».</p></div>
+    <div><h1>Задачи</h1><p>Те же задачи, что в Telegram-боте. Пишите так же, как боту: «завтра в 10 позвонить автошколе», «каждый понедельник в 9 планёрка». Чтобы бот повторял, пока не отметите: «каждые 2 часа выпить воды».</p></div>
   </div>
   <section class="card lock" id="tk-lock" hidden>
     <h2>Введите пароль</h2>
@@ -1318,7 +1318,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
         cb.onchange = () => tkToggle(t, cb.checked);
         const mid = el('label'); mid.htmlFor = cb.id;
         mid.append(el('div', 't', t.text));
-        const meta = [t.when, t.repeatText && '🔁 ' + t.repeatText].filter(Boolean).join(' · ');
+        const meta = [t.when, t.repeatText && '🔁 ' + t.repeatText, t.nagText && '🔔 ' + t.nagText].filter(Boolean).join(' · ');
         if (meta && !t.done) mid.append(el('div', 'w' + (t.due && t.due < now ? ' late' : ''), meta));
         const del = el('button', 'del', '×'); del.type = 'button'; del.setAttribute('aria-label', 'Удалить задачу');
         del.onclick = () => tkDelete(t);

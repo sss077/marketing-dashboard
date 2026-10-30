@@ -11,7 +11,7 @@ const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
-const view = (t, now) => ({ ...t, when: t.due ? human(t.due, now) : null, repeatText: t.repeat ? repeatLabel(t.repeat) : null });
+const view = (t, now) => ({ ...t, when: t.due ? human(t.due, now) : null, repeatText: t.repeat ? repeatLabel(t.repeat) : null, nagText: t.nagEvery ? `повтор каждые ${t.nagEvery} ч` : null });
 
 export default async (req, context) => {
   if (!(await authorized(req))) return json({ error: "Нужен пароль" }, 401);
@@ -28,7 +28,7 @@ export default async (req, context) => {
     const text = String(body?.text || "").trim().slice(0, 500);
     if (!text) return json({ error: "Пустая задача" }, 400);
     const p = parse(text, now);
-    const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, done: false, createdAt: now, src: "web" };
+    const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, nagEvery: p.nagEvery, done: false, createdAt: now, src: "web" };
     await saveTask(t);
     return json(view(t, now));
   }
@@ -40,7 +40,7 @@ export default async (req, context) => {
     const data = await store.get(id, { type: "json" });
     if (!data) return json({ error: "Задача не найдена" }, 404);
     const body = await req.json().catch(() => ({}));
-    const t = { ...data, id };
+    const t = { ...data, id, nag: null };
     if (body.done === true && t.repeat) {
       t.notifiedFor = t.due;
       t.due = nextRepeat(t.repeat, Math.max(now, t.due || 0));

@@ -3,6 +3,7 @@ import { parse, nextRepeat, repeatLabel } from "../lib/parse.mjs";
 import { human, local, fromLocal } from "../lib/time.mjs";
 import { listTasks, saveTask, taskStore, botStore, newId } from "../lib/tasks.mjs";
 import { digest } from "../lib/digest.mjs";
+import { nextNag, nagRow } from "../lib/nag.mjs";
 
 // Telegram-бот DDL V.
 // GET  /api/telegram/check — проверить токен из переменной окружения TELEGRAM_BOT_TOKEN (сам токен не выводится).
@@ -74,24 +75,22 @@ const HELP = [
   "• <i>по будням в 10 проверить заявки</i>",
   "• <i>купить домен</i> (без времени — просто в список)",
   "",
+  "🔁 Чтобы я повторял напоминание, пока не нажмёте «Сделано», выберите под ним «1 ч · 2 ч · 3 ч · 4 ч» или напишите: <i>каждые 2 часа выпить воды</i>. Ночью, с 22:00 до 9:00, повторы ждут утра.",
+  "",
   "Команды:",
   "/list — все задачи",
   "/today — на сегодня и просроченные",
   "/digest — утренняя сводка прямо сейчас",
   "",
-  "Каждое утро в 9:00 присылаю сводку: задачи на день, дедлайны проектов и красные проекты. 1-го числа — долги клиентов.",
+  "Каждое утро в 9:00 — сводка: задачи на день, дедлайны проектов и красные проекты. 1-го числа — долги клиентов.",
 ].join("\n");
 
 const ok = () => new Response("ok");
 const short = (s, n = 32) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
-const reminderButtons = (id) => [
-  [{ text: "✅ Сделано", callback_data: `done:${id}` }],
-  [{ text: "⏰ Через час", callback_data: `snz:${id}` }, { text: "📅 Завтра в 9", callback_data: `tmr:${id}` }],
-];
 
 function taskLine(t, now) {
   const when = t.due ? (t.due < now ? "⚠️ " : "") + human(t.due, now) : "без срока";
-  return `• ${esc(t.text)} — <i>${when}</i>${t.repeat ? " 🔁" : ""}`;
+  return `• ${esc(t.text)} — <i>${when}</i>${t.repeat ? " 🔁" : ""}${t.nagEvery ? ` (повтор каждые ${t.nagEvery} ч)` : ""}`;
 }
 
 export function listMessage(tasks, mode, now = Date.now()) {
@@ -126,15 +125,17 @@ export function listMessage(tasks, mode, now = Date.now()) {
 async function createTask(chat, text) {
   const now = Date.now();
   const p = parse(text, now);
-  const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, done: false, createdAt: now, src: "tg" };
+  const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, nagEvery: p.nagEvery, done: false, createdAt: now, src: "tg" };
   await saveTask(t);
   const lines = [`✅ Записал: <b>${esc(t.text)}</b>`];
   if (t.repeat) lines.push(`🔁 ${repeatLabel(t.repeat)}`, `⏰ Первое напоминание: ${human(t.due, now)}`);
-  else if (t.due && t.due <= now + 30_000) lines.push("⏰ Это время уже прошло, напомню прямо сейчас.");
+  else if (t.due && t.due <= now + 30_000) lines.push(t.nagEvery ? "⏰ Первое напоминание — прямо сейчас." : "⏰ Это время уже прошло, напомню прямо сейчас.");
   else if (t.due) lines.push(`⏰ Напомню ${human(t.due, now)}`);
   else lines.push("Без напоминания. Чтобы я напомнил, добавьте время: «завтра в 10 …» или нажмите кнопку.");
+  if (t.nagEvery) lines.push(`🔁 Буду повторять каждые ${t.nagEvery} ч, пока не нажмёте «Сделано».`);
+  else if (t.due) lines.push("Повторять напоминание, пока не сделано? Выберите интервал:");
   const buttons = t.due
-    ? [[{ text: "↩️ Отменить", callback_data: `del:${t.id}` }]]
+    ? [nagRow(t), [{ text: "↩️ Отменить", callback_data: `del:${t.id}` }]]
     : [[{ text: "⏰ Через час", callback_data: `snz:${t.id}` }, { text: "📅 Завтра в 9", callback_data: `tmr:${t.id}` }], [{ text: "↩️ Отменить", callback_data: `del:${t.id}` }]];
   await send(chat, lines.join("\n"), buttons);
 }
@@ -177,6 +178,16 @@ async function onCallback(q, owner) {
   const now = Date.now();
   const title = `<b>${esc(t.text)}</b>`;
 
+  if (action === "nag") {
+    t.nagEvery = Number(rest[0]) || 1;
+    // Если напоминание уже было, следующий повтор — через выбранный интервал; иначе повторы начнутся после первого напоминания.
+    t.nag = t.notifiedFor ? { ...(t.nag || {}), at: nextNag(t, now), msg: q.message.message_id } : null;
+    await saveTask(t);
+    await answer(`Буду повторять каждые ${t.nagEvery} ч`);
+    const keep = (q.message.reply_markup?.inline_keyboard || []).filter((row) => !row.some((b) => /^(nag|stop):/.test(b.callback_data)));
+    return tg("editMessageReplyMarkup", { chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: { inline_keyboard: [...keep, nagRow(t)] } });
+  }
+  t.nag = null;
   if (action === "done" || action === "ldone") {
     if (t.repeat) {
       if (t.due && t.due <= now + 60_000 && t.notifiedFor !== t.due) { t.notifiedFor = t.due; t.due = nextRepeat(t.repeat, now); }
@@ -199,6 +210,13 @@ async function onCallback(q, owner) {
     await saveTask(t);
     await answer("Перенесено");
     return edit(`⏰ ${title}\nНапомню ${human(t.due, now)}`);
+  }
+  if (action === "stop") {
+    t.nagEvery = null;
+    await saveTask(t);
+    await answer("Повтор выключен");
+    const keep = (q.message.reply_markup?.inline_keyboard || []).filter((row) => !row.some((b) => /^(nag|stop):/.test(b.callback_data)));
+    return tg("editMessageReplyMarkup", { chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: { inline_keyboard: [...keep, nagRow(t)] } });
   }
   if (action === "del") {
     await store.delete(id);

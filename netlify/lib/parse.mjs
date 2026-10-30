@@ -1,8 +1,9 @@
 import { local, fromLocal } from "./time.mjs";
 
 // Разбор задачи на русском: «завтра в 10 позвонить автошколе», «через 2 часа отправить отчёт»,
-// «каждый понедельник в 9 планёрка». Возвращает { text, due, repeat }:
-// due — момент напоминания (ms) или null, repeat — правило повтора или null.
+// «каждый понедельник в 9 планёрка». Возвращает { text, due, repeat, nagEvery }:
+// due — момент напоминания (ms) или null, repeat — правило повтора или null,
+// nagEvery — повторять напоминание каждые N часов, пока задачу не отметят («каждые 2 часа»).
 
 const WEEKDAYS = [
   [/^воскресень/, 0], [/^вс$/, 0], [/^понедельник/, 1], [/^пн$/, 1], [/^вторник/, 2], [/^вт$/, 2],
@@ -59,6 +60,11 @@ export function parse(input, now = Date.now()) {
   let time = null; // {h, mi}
   let repeat = null;
   let rel = null; // ms
+  let nagEvery = null;
+
+  // Повторять, пока не сделано: «каждый час», «каждые 2 часа» (от 1 до 4 часов)
+  const nm = take(`${B}(?:напоминай\\s+)?(?:каждый час|каждые\\s+([1-4])\\s*(?:часа|часов|ч))${E}`);
+  if (nm) nagEvery = Number(nm[1] || 1);
 
   // Относительное время: «через 2 часа», «через полчаса», «через 3 дня», «через неделю»
   let m = take(`${B}через\\s+(\\d+|полчаса|пол часа)?\\s*(минуту|минуты|минут|мин|часа|часов|час|ч|дня|дней|день|недели|недель|неделю)?${E}`);
@@ -125,5 +131,6 @@ export function parse(input, now = Date.now()) {
   }
 
   const text = s.replace(/\s+/g, " ").replace(/^[\s,.:;—–-]+|[\s,.:;—–-]+$/g, "").trim();
-  return { text: text ? text[0].toUpperCase() + text.slice(1) : String(input).trim(), due, repeat };
+  if (nagEvery && !due) due = now; // «каждые 2 часа выпить воды» без времени — начинаем сейчас
+  return { text: text ? text[0].toUpperCase() + text.slice(1) : String(input).trim(), due, repeat, nagEvery };
 }
