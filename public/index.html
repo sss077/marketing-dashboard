@@ -227,6 +227,20 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   .grid2 { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Задачи */
+.tk-add { display: flex; gap: 8px; }
+.tk-add input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+.tk-group { display: flex; flex-direction: column; gap: 6px; }
+.tk-group h3 { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tk-group.overdue h3 { color: var(--red); }
+.tk-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.tk-item input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+.tk-item .t { font-weight: 500; overflow-wrap: anywhere; }
+.tk-item .w { font-size: 13px; color: var(--muted); }
+.tk-item .w.late { color: var(--red); }
+.tk-item.done .t { text-decoration: line-through; color: var(--muted); }
+.tk-item .del { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 20px; min-width: 40px; min-height: 40px; }
+
 /* Навигация, страница проекта, финансы */
 .tabs { display: flex; gap: 6px; }
 .tabs a { padding: 7px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600; border: 1px solid var(--line); background: var(--surface); }
@@ -302,7 +316,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 </head>
 <body>
 <div class="wrap" id="view-list">
-  <nav class="tabs" aria-label="Разделы"><a href="#" aria-current="page">Проекты</a><a href="#finance">Финансы</a></nav>
+  <nav class="tabs" aria-label="Разделы"><a href="#" aria-current="page">Проекты</a><a href="#tasks">Задачи</a><a href="#finance">Финансы</a></nav>
   <div class="top">
     <div>
       <h1>DDL V</h1>
@@ -362,8 +376,32 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   </div>
 </div>
 
+<div class="wrap" id="view-tasks" hidden>
+  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#tasks" aria-current="page">Задачи</a><a href="#finance">Финансы</a></nav>
+  <div class="top">
+    <div><h1>Задачи</h1><p>Те же задачи, что в Telegram-боте. Пишите так же, как боту: «завтра в 10 позвонить автошколе», «каждый понедельник в 9 планёрка».</p></div>
+  </div>
+  <section class="card lock" id="tk-lock" hidden>
+    <h2>Введите пароль</h2>
+    <span class="hint" id="tk-lock-hint">Пароль тот же, что для «Финансов».</span>
+    <form id="tk-lock-form" novalidate>
+      <input type="password" id="tk-pass" placeholder="Пароль" autocomplete="current-password">
+      <button class="btn primary" id="tk-lock-btn" type="submit">Открыть</button>
+    </form>
+    <p class="err" id="tk-lock-err" hidden></p>
+  </section>
+  <div class="list" id="tk-body" hidden>
+    <div class="note-bar" id="tk-bot" hidden><span>Telegram-бот ещё не подключён. Откройте <a class="navlink" href="/api/telegram/setup" target="_blank" rel="noopener">страницу подключения бота</a>, затем нажмите Start в боте.</span></div>
+    <form class="tk-add" id="tk-form" novalidate>
+      <input id="tk-input" placeholder="Например: завтра в 10 позвонить автошколе" autocomplete="off" aria-label="Новая задача">
+      <button class="btn primary" id="tk-add-btn" type="submit">Добавить</button>
+    </form>
+    <div class="list" id="tk-list"></div>
+  </div>
+</div>
+
 <div class="wrap" id="view-finance" hidden>
-  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#finance" aria-current="page">Финансы</a></nav>
+  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#tasks">Задачи</a><a href="#finance" aria-current="page">Финансы</a></nav>
   <div class="top">
     <div><h1>Финансы</h1><p>Видно только вам, по паролю. Сколько клиентов было в месяце, кто оплатил и сколько вы заработали.</p></div>
     <button class="btn" id="fin-logout" type="button" hidden>Выйти</button>
@@ -1215,19 +1253,135 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   };
   $('fe-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('fe-unlock').click(); } });
 
+  /* Задачи (общие с Telegram-ботом) */
+  let tkTasks = [], tkTimer = null;
+  const TZ = 5 * 3600e3; // Ташкент
+  const dayIdx = (ms) => Math.floor((ms + TZ) / 864e5);
+
+  async function tkApi(method, id, body) {
+    const r = await fetch('/api/tasks' + (id ? '/' + encodeURIComponent(id) : ''), {
+      method, cache: 'no-store',
+      headers: { 'content-type': 'application/json', ...(finToken ? { 'x-finance-token': finToken } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 401) setToken(null);
+    if (!r.ok) throw Object.assign(new Error(data.error || 'HTTP ' + r.status), { status: r.status });
+    return data;
+  }
+
+  async function enterTasks() {
+    clearInterval(tkTimer);
+    if (!finToken) {
+      const configured = await checkConfigured();
+      $('tk-lock-hint').replaceChildren();
+      if (configured) $('tk-lock-hint').textContent = 'Пароль тот же, что для «Финансов».';
+      else { const a = el('a', 'navlink', 'раздел «Финансы»'); a.href = '#finance'; $('tk-lock-hint').append('Сначала придумайте пароль: откройте ', a, '.'); }
+      $('tk-lock-form').hidden = !configured;
+      $('tk-lock').hidden = false; $('tk-body').hidden = true;
+      return;
+    }
+    $('tk-lock').hidden = true; $('tk-body').hidden = false;
+    await loadTasks();
+    tkTimer = setInterval(() => { if (!document.hidden && location.hash === '#tasks') loadTasks(); }, 30000);
+  }
+
+  async function loadTasks() {
+    try {
+      const d = await tkApi('GET');
+      tkTasks = d.tasks; $('tk-bot').hidden = d.botLinked;
+      renderTasksView();
+    } catch (e) { if (!finToken) enterTasks(); else toast('Не удалось загрузить задачи'); }
+  }
+
+  function renderTasksView() {
+    const now = Date.now(), today = dayIdx(now);
+    const open = tkTasks.filter((t) => !t.done).sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity));
+    const groups = [
+      ['Просрочено', open.filter((t) => t.due && t.due < now), 'overdue'],
+      ['Сегодня', open.filter((t) => t.due && t.due >= now && dayIdx(t.due) === today)],
+      ['Завтра', open.filter((t) => t.due && dayIdx(t.due) === today + 1)],
+      ['Позже', open.filter((t) => t.due && dayIdx(t.due) > today + 1)],
+      ['Без срока', open.filter((t) => !t.due)],
+      ['Сделано', tkTasks.filter((t) => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 15)],
+    ];
+    const box = $('tk-list'); box.replaceChildren();
+    if (!tkTasks.length) { box.append(el('div', 'empty', 'Задач пока нет. Напишите первую в поле выше или боту в Telegram.')); return; }
+    for (const [title, list, cls] of groups) {
+      if (!list.length) continue;
+      const g = el('div', 'tk-group' + (cls ? ' ' + cls : ''));
+      g.append(el('h3', null, title + ' · ' + list.length));
+      list.forEach((t) => {
+        const it = el('div', 'tk-item' + (t.done ? ' done' : ''));
+        const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!t.done; cb.id = 'tk-' + t.id;
+        cb.setAttribute('aria-label', t.repeat ? 'Отметить выполненной в этот раз' : 'Выполнено');
+        cb.onchange = () => tkToggle(t, cb.checked);
+        const mid = el('label'); mid.htmlFor = cb.id;
+        mid.append(el('div', 't', t.text));
+        const meta = [t.when, t.repeatText && '🔁 ' + t.repeatText].filter(Boolean).join(' · ');
+        if (meta && !t.done) mid.append(el('div', 'w' + (t.due && t.due < now ? ' late' : ''), meta));
+        const del = el('button', 'del', '×'); del.type = 'button'; del.setAttribute('aria-label', 'Удалить задачу');
+        del.onclick = () => tkDelete(t);
+        it.append(cb, mid, del); g.append(it);
+      });
+      box.append(g);
+    }
+  }
+
+  async function tkToggle(t, done) {
+    try {
+      const upd = await tkApi('PUT', t.id, { done });
+      tkTasks = tkTasks.map((x) => (x.id === t.id ? upd : x));
+      renderTasksView();
+      if (t.repeat && done) toast('Отмечено. Следующее: ' + upd.when);
+    } catch (e) { toast('Не получилось сохранить. Проверьте интернет.'); loadTasks(); }
+  }
+  async function tkDelete(t) {
+    tkTasks = tkTasks.filter((x) => x.id !== t.id); renderTasksView();
+    try { await tkApi('DELETE', t.id); toast('Задача удалена'); }
+    catch (e) { toast('Не получилось удалить. Проверьте интернет.'); loadTasks(); }
+  }
+
+  $('tk-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = $('tk-input').value.trim();
+    if (!text) { $('tk-input').focus(); return; }
+    $('tk-add-btn').disabled = true;
+    try {
+      const t = await tkApi('POST', null, { text });
+      tkTasks.push(t); $('tk-input').value = '';
+      renderTasksView();
+      toast(t.repeatText ? '🔁 ' + t.repeatText : t.when ? 'Напомню ' + t.when : 'Записано без напоминания');
+    } catch (ex) { toast('Не получилось добавить. Проверьте интернет.'); }
+    finally { $('tk-add-btn').disabled = false; }
+  });
+  $('tk-lock-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('tk-lock-err').hidden = true; $('tk-lock-btn').disabled = true;
+    try {
+      const { token } = await finApi('POST', 'login', { password: $('tk-pass').value });
+      setToken(token); $('tk-pass').value = '';
+      await enterTasks();
+    } catch (ex) { $('tk-lock-err').textContent = ex.status === 401 ? 'Неверный пароль.' : 'Не получилось. Проверьте интернет и попробуйте ещё раз.'; $('tk-lock-err').hidden = false; }
+    finally { $('tk-lock-btn').disabled = false; }
+  });
+
   /* Переходы между страницами */
   function route() {
     const h = location.hash.slice(1);
     currentId = h.startsWith('project-') ? h.slice(8) : null;
-    const fin = h === 'finance';
-    $('view-list').hidden = !!currentId || fin;
+    const fin = h === 'finance', tk = h === 'tasks';
+    $('view-list').hidden = !!currentId || fin || tk;
     $('view-project').hidden = !currentId;
     $('view-finance').hidden = !fin;
-    $('fab').hidden = !!currentId || fin || !canWrite;
-    document.title = fin ? 'Финансы · DDL V' : 'DDL V';
+    $('view-tasks').hidden = !tk;
+    $('fab').hidden = !!currentId || fin || tk || !canWrite;
+    document.title = fin ? 'Финансы · DDL V' : tk ? 'Задачи · DDL V' : 'DDL V';
+    if (!tk) clearInterval(tkTimer);
     if (!$('sheet').hidden) closeEditor();
     if (currentId) renderProject();
     if (fin) enterFinance();
+    if (tk) enterTasks();
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);

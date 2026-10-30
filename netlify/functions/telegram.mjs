@@ -1,6 +1,13 @@
+import { tg, send, botToken, hookSecret } from "../lib/tg.mjs";
+import { parse, nextRepeat, repeatLabel } from "../lib/parse.mjs";
+import { human, local, fromLocal } from "../lib/time.mjs";
+import { listTasks, saveTask, taskStore, botStore, newId } from "../lib/tasks.mjs";
+import { digest } from "../lib/digest.mjs";
+
 // Telegram-бот DDL V.
-// GET /api/telegram/check — проверить токен из переменной окружения TELEGRAM_BOT_TOKEN.
-// Сам токен никогда не выводится.
+// GET  /api/telegram/check — проверить токен из переменной окружения TELEGRAM_BOT_TOKEN (сам токен не выводится).
+// GET  /api/telegram/setup — подключить бота к сайту (webhook) и задать команды.
+// POST /api/telegram/hook  — сюда Telegram присылает сообщения и нажатия кнопок.
 
 const page = (title, lines, ok) =>
   new Response(
@@ -56,8 +63,194 @@ async function check() {
   ], true);
 }
 
+const HELP = [
+  "Пишите задачи обычным текстом, я сам пойму, когда напомнить:",
+  "",
+  "• <i>завтра в 10 позвонить автошколе</i>",
+  "• <i>через 2 часа проверить кампанию</i>",
+  "• <i>в пятницу в 15:00 отчёт клиенту</i>",
+  "• <i>5 ноября в 12 встреча</i>",
+  "• <i>каждый понедельник в 9 планёрка</i>",
+  "• <i>по будням в 10 проверить заявки</i>",
+  "• <i>купить домен</i> (без времени — просто в список)",
+  "",
+  "Команды:",
+  "/list — все задачи",
+  "/today — на сегодня и просроченные",
+  "/digest — утренняя сводка прямо сейчас",
+  "",
+  "Каждое утро в 9:00 присылаю сводку: задачи на день, дедлайны проектов и красные проекты. 1-го числа — долги клиентов.",
+].join("\n");
+
+const ok = () => new Response("ok");
+const short = (s, n = 32) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+const reminderButtons = (id) => [
+  [{ text: "✅ Сделано", callback_data: `done:${id}` }],
+  [{ text: "⏰ Через час", callback_data: `snz:${id}` }, { text: "📅 Завтра в 9", callback_data: `tmr:${id}` }],
+];
+
+function taskLine(t, now) {
+  const when = t.due ? (t.due < now ? "⚠️ " : "") + human(t.due, now) : "без срока";
+  return `• ${esc(t.text)} — <i>${when}</i>${t.repeat ? " 🔁" : ""}`;
+}
+
+export function listMessage(tasks, mode, now = Date.now()) {
+  const open = tasks.filter((t) => !t.done).sort((a, b) => (a.due ?? Infinity) - (b.due ?? Infinity));
+  const l = local(now);
+  const endToday = fromLocal(l.y, l.mo, l.d + 1);
+  const endTomorrow = fromLocal(l.y, l.mo, l.d + 2);
+  const groups = [
+    ["⚠️ Просрочено", open.filter((t) => t.due && t.due < now)],
+    ["📅 Сегодня", open.filter((t) => t.due && t.due >= now && t.due < endToday)],
+  ];
+  if (mode !== "today") {
+    groups.push(["Завтра", open.filter((t) => t.due && t.due >= endToday && t.due < endTomorrow)]);
+    groups.push(["Позже", open.filter((t) => t.due && t.due >= endTomorrow)]);
+    groups.push(["Без срока", open.filter((t) => !t.due)]);
+  }
+  const shown = [];
+  const parts = [];
+  for (const [title, list] of groups) {
+    if (!list.length) continue;
+    parts.push(`<b>${title}</b>\n` + list.map((t) => taskLine(t, now)).join("\n"));
+    shown.push(...list);
+  }
+  if (!parts.length) {
+    return { text: mode === "today" ? "На сегодня задач нет 🎉" : "Задач нет. Напишите мне, что нужно сделать.", buttons: null };
+  }
+  const buttons = shown.slice(0, 20).map((t) => [{ text: "✅ " + short(t.text), callback_data: `ldone:${mode === "today" ? "t" : "a"}:${t.id}` }]);
+  const more = shown.length > 20 ? `\n\nКнопки показаны для первых 20 из ${shown.length}.` : "";
+  return { text: parts.join("\n\n") + "\n\nНажмите на задачу, чтобы отметить её сделанной." + more, buttons };
+}
+
+async function createTask(chat, text) {
+  const now = Date.now();
+  const p = parse(text, now);
+  const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, done: false, createdAt: now, src: "tg" };
+  await saveTask(t);
+  const lines = [`✅ Записал: <b>${esc(t.text)}</b>`];
+  if (t.repeat) lines.push(`🔁 ${repeatLabel(t.repeat)}`, `⏰ Первое напоминание: ${human(t.due, now)}`);
+  else if (t.due && t.due <= now + 30_000) lines.push("⏰ Это время уже прошло, напомню прямо сейчас.");
+  else if (t.due) lines.push(`⏰ Напомню ${human(t.due, now)}`);
+  else lines.push("Без напоминания. Чтобы я напомнил, добавьте время: «завтра в 10 …» или нажмите кнопку.");
+  const buttons = t.due
+    ? [[{ text: "↩️ Отменить", callback_data: `del:${t.id}` }]]
+    : [[{ text: "⏰ Через час", callback_data: `snz:${t.id}` }, { text: "📅 Завтра в 9", callback_data: `tmr:${t.id}` }], [{ text: "↩️ Отменить", callback_data: `del:${t.id}` }]];
+  await send(chat, lines.join("\n"), buttons);
+}
+
+async function onMessage(msg, owner) {
+  const chat = msg.chat.id;
+  const text = (msg.text || "").trim();
+  if (msg.chat.type !== "private") return;
+  const meta = botStore();
+  if (!owner) {
+    if (/^\/start/.test(text)) {
+      await meta.setJSON("owner", { chat, name: msg.from?.first_name || "", at: Date.now() });
+      await send(chat, `Привет${msg.from?.first_name ? ", " + esc(msg.from.first_name) : ""}! Теперь я ваш личный бот DDL V и отвечаю только вам.\n\n` + HELP);
+    } else await send(chat, "Нажмите /start, чтобы начать.");
+    return;
+  }
+  if (owner.chat !== chat) {
+    await send(chat, "Это личный бот, он отвечает только своему владельцу.");
+    return;
+  }
+  if (!text) return send(chat, "Я понимаю только текст. Напишите задачу, например: «завтра в 10 позвонить клиенту».");
+  if (/^\/(start|help)/.test(text)) return send(chat, HELP);
+  if (/^\/(list|tasks)/.test(text)) { const m = listMessage(await listTasks(), "all"); return send(chat, m.text, m.buttons); }
+  if (/^\/today/.test(text)) { const m = listMessage(await listTasks(), "today"); return send(chat, m.text, m.buttons); }
+  if (/^\/digest/.test(text)) return send(chat, await digest(await listTasks()));
+  if (text.startsWith("/")) return send(chat, "Не знаю такой команды.\n\n" + HELP);
+  return createTask(chat, text);
+}
+
+async function onCallback(q, owner) {
+  const answer = (text) => tg("answerCallbackQuery", { callback_query_id: q.id, ...(text ? { text } : {}) });
+  if (!owner || q.message?.chat?.id !== owner.chat) return answer("Это личный бот.");
+  const [action, ...rest] = String(q.data || "").split(":");
+  const id = rest[rest.length - 1];
+  const store = taskStore();
+  const data = await store.get(id, { type: "json" });
+  const edit = (text, buttons) => tg("editMessageText", { chat_id: q.message.chat.id, message_id: q.message.message_id, text, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons || [] } });
+  if (!data) { await answer("Задача уже удалена"); return edit(q.message.text ? esc(q.message.text) : "Задача удалена"); }
+  const t = { ...data, id };
+  const now = Date.now();
+  const title = `<b>${esc(t.text)}</b>`;
+
+  if (action === "done" || action === "ldone") {
+    if (t.repeat) {
+      if (t.due && t.due <= now + 60_000 && t.notifiedFor !== t.due) { t.notifiedFor = t.due; t.due = nextRepeat(t.repeat, now); }
+      await saveTask(t);
+      await answer("Отмечено");
+      if (action === "done") return edit(`✅ ${title}\n🔁 Следующее напоминание: ${human(t.due, now)}`);
+    } else {
+      t.done = true; t.doneAt = now;
+      await saveTask(t);
+      await answer("Сделано ✅");
+      if (action === "done") return edit(`✅ <s>${esc(t.text)}</s>\nСделано`);
+    }
+    const m = listMessage(await listTasks(), rest[0] === "t" ? "today" : "all", now);
+    return edit(m.text, m.buttons);
+  }
+  if (action === "snz" || action === "tmr") {
+    const l = local(now);
+    t.due = action === "snz" ? now + 3_600_000 : fromLocal(l.y, l.mo, l.d + 1, 9, 0);
+    t.notifiedFor = null;
+    await saveTask(t);
+    await answer("Перенесено");
+    return edit(`⏰ ${title}\nНапомню ${human(t.due, now)}`);
+  }
+  if (action === "del") {
+    await store.delete(id);
+    await answer("Удалено");
+    return edit(`🗑 <s>${esc(t.text)}</s>\nУдалено`);
+  }
+  return answer();
+}
+
+async function hook(req) {
+  if (!botToken() || req.headers.get("x-telegram-bot-api-secret-token") !== hookSecret()) return new Response("forbidden", { status: 403 });
+  const u = await req.json().catch(() => null);
+  if (!u) return ok();
+  const owner = await botStore().get("owner", { type: "json" });
+  try {
+    if (u.message) await onMessage(u.message, owner);
+    else if (u.callback_query) await onCallback(u.callback_query, owner);
+  } catch (e) {
+    console.error(e);
+    const chat = u.message?.chat?.id ?? u.callback_query?.message?.chat?.id;
+    if (chat && owner?.chat === chat) await send(chat, "Что-то пошло не так, попробуйте ещё раз.");
+  }
+  return ok();
+}
+
+async function setup(req) {
+  if (!botToken()) return check();
+  const base = new URL(req.url).origin;
+  const me = await tg("getMe");
+  if (!me.ok) return check();
+  const r = await tg("setWebhook", { url: `${base}/api/telegram/hook`, secret_token: hookSecret(), allowed_updates: ["message", "callback_query"], drop_pending_updates: true });
+  await tg("setMyCommands", { commands: [
+    { command: "list", description: "Все задачи" },
+    { command: "today", description: "На сегодня и просроченные" },
+    { command: "digest", description: "Сводка: задачи, дедлайны, красные проекты" },
+    { command: "help", description: "Как писать задачи" },
+  ] });
+  const owner = await botStore().get("owner", { type: "json" });
+  if (!r.ok) return page("Не удалось подключить бота", [`Telegram ответил: ${esc(r.description || "ошибка")}. Откройте эту страницу ещё раз через минуту.`], false);
+  return page("Бот подключён ✅", [
+    `Бот: <b>${esc(me.result.first_name)}</b> (@${esc(me.result.username)})`,
+    owner
+      ? "Владелец уже назначен. Бот отвечает только ему."
+      : `Теперь откройте <a href="https://t.me/${esc(me.result.username)}">@${esc(me.result.username)}</a> и нажмите <b>Start</b>. Кто нажмёт первым, тот и станет владельцем, поэтому сделайте это сразу.`,
+  ], true);
+}
+
 export default async (req, context) => {
-  if (context.params?.action === "check" && req.method === "GET") return check();
+  const action = context.params?.action;
+  if (action === "check" && req.method === "GET") return check();
+  if (action === "setup" && req.method === "GET") return setup(req);
+  if (action === "hook" && req.method === "POST") return hook(req);
   return new Response("Not found", { status: 404 });
 };
 
