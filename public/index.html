@@ -227,6 +227,44 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   .grid2 { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Лиды */
+.ld-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.ld-head input { font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; flex: 1 1 220px; max-width: 360px; }
+.ld-wrap { overflow-x: auto; margin-inline: -4px; }
+.ld-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ld-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ld-table td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ld-table tr { cursor: pointer; }
+.ld-table tbody tr:hover td { background: var(--bg); }
+.ld-table .num { text-align: right; }
+.ld-table .nm { font-weight: 600; }
+.ld-table .note { color: var(--muted); max-width: 260px; overflow-wrap: anywhere; }
+.ld-table td.c-meta { display: none; }
+.ld-table select { font: inherit; font-size: 13px; border-radius: 999px; padding: 4px 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.ld-table select.s-new { background: var(--done-soft); }
+.ld-table select.s-work { background: var(--yellow-soft); }
+.ld-table select.s-won { background: var(--green-soft); }
+.ld-table select.s-lost { background: var(--red-soft); }
+.src-row { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) 7.5em; gap: 10px; align-items: center; padding: 5px 0; font-size: 14px; }
+.src-bar { position: relative; height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
+.src-bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); opacity: .35; border-radius: 5px; }
+.src-bar b { position: absolute; inset: 0 auto 0 0; background: var(--green); border-radius: 5px; }
+@media (max-width: 760px) {
+  .ld-table thead { display: none; }
+  .ld-table, .ld-table tbody, .ld-table tr, .ld-table td { display: block; width: 100%; box-sizing: border-box; }
+  .ld-table tr { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
+  .ld-table td { border: 0; padding: 0; }
+  .ld-table td.c-name { grid-column: 1; }
+  .ld-table td.c-status { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
+  .ld-table td.c-date, .ld-table td.c-src, .ld-table td.c-svc, .ld-table td.c-budget { display: none; }
+  .ld-table td.c-contact, .ld-table td.c-note, .ld-table td.c-meta { grid-column: 1 / -1; font-size: 13px; }
+  .ld-table td.c-meta { color: var(--muted); display: block; }
+  .ld-table td.c-note:empty { display: none; }
+  .ld-table .num { text-align: left; }
+  .ld-wrap { margin-inline: 0; }
+  #ld-add { display: none; }
+}
+
 /* Задачи */
 .tk-add { display: flex; gap: 8px; }
 .tk-add input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
@@ -316,7 +354,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 </head>
 <body>
 <div class="wrap" id="view-list">
-  <nav class="tabs" aria-label="Разделы"><a href="#" aria-current="page">Проекты</a><a href="#tasks">Задачи</a><a href="#finance">Финансы</a></nav>
+  <nav class="tabs" aria-label="Разделы"><a href="#" aria-current="page">Проекты</a><a href="#leads">Лиды</a><a href="#tasks">Задачи</a><a href="#finance">Финансы</a></nav>
   <div class="top">
     <div>
       <h1>DDL V</h1>
@@ -376,8 +414,29 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   </div>
 </div>
 
+<div class="wrap" id="view-leads" hidden>
+  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#leads" aria-current="page">Лиды</a><a href="#tasks">Задачи</a><a href="#finance">Финансы</a></nav>
+  <div class="top">
+    <div><h1>Лиды агентства</h1><p>Потенциальные клиенты вашего агентства: кто написал, откуда пришёл, чем закончилось.</p></div>
+    <button class="btn primary" id="ld-add" type="button">+ Новый лид</button>
+  </div>
+  <div class="month-nav"><button class="btn" id="ld-prev" type="button" aria-label="Предыдущий месяц">‹</button><b id="ld-month">—</b><button class="btn" id="ld-next" type="button" aria-label="Следующий месяц">›</button></div>
+  <div class="fin-kpis">
+    <div class="card"><span class="l">Лидов за месяц</span><span class="big" id="lk-total">—</span><span class="hint" id="lk-total-sub"></span></div>
+    <div class="card"><span class="l">В работе</span><span class="big" id="lk-work">—</span></div>
+    <div class="card"><span class="l">Купили</span><span class="big" id="lk-won">—</span><span class="hint" id="lk-won-sub"></span></div>
+    <div class="card"><span class="l">Конверсия в покупку</span><span class="big" id="lk-conv">—</span><span class="hint" id="lk-conv-sub"></span></div>
+  </div>
+  <section class="card" id="ld-sources-card"><h2>Откуда приходят клиенты</h2><div id="ld-sources"></div></section>
+  <section class="card">
+    <div class="ld-head"><h2>Лиды за месяц</h2><input id="ld-search" type="search" placeholder="Поиск: имя, контакт, комментарий" aria-label="Поиск по лидам"></div>
+    <div class="ld-wrap"><table class="ld-table"><thead><tr><th>Дата</th><th>Кто</th><th>Контакт</th><th>Источник</th><th>Услуга</th><th class="num">Чек, $</th><th>Статус</th><th>Комментарий</th></tr></thead><tbody id="ld-rows"></tbody></table></div>
+    <div id="ld-empty" class="hint" hidden></div>
+  </section>
+</div>
+
 <div class="wrap" id="view-tasks" hidden>
-  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#tasks" aria-current="page">Задачи</a><a href="#finance">Финансы</a></nav>
+  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#leads">Лиды</a><a href="#tasks" aria-current="page">Задачи</a><a href="#finance">Финансы</a></nav>
   <div class="top">
     <div><h1>Задачи</h1><p>Те же задачи, что в Telegram-боте. Пишите так же, как боту: «завтра в 10 позвонить автошколе», «каждый понедельник в 9 планёрка». Чтобы бот повторял, пока не отметите: «каждые 2 часа выпить воды».</p></div>
   </div>
@@ -401,7 +460,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 </div>
 
 <div class="wrap" id="view-finance" hidden>
-  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#tasks">Задачи</a><a href="#finance" aria-current="page">Финансы</a></nav>
+  <nav class="tabs" aria-label="Разделы"><a href="#">Проекты</a><a href="#leads">Лиды</a><a href="#tasks">Задачи</a><a href="#finance" aria-current="page">Финансы</a></nav>
   <div class="top">
     <div><h1>Финансы</h1><p>Видно только вам, по паролю. Сколько клиентов было в месяце, кто оплатил и сколько вы заработали.</p></div>
     <button class="btn" id="fin-logout" type="button" hidden>Выйти</button>
@@ -440,6 +499,31 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     </section>
   </div>
 </div>
+
+<div class="scrim" id="ld-scrim" hidden></div>
+<aside class="sheet" id="ld-sheet" role="dialog" aria-modal="true" aria-labelledby="ld-title" hidden>
+  <header><h2 id="ld-title">Новый лид</h2><button class="x" id="ld-close" type="button" aria-label="Закрыть">×</button></header>
+  <form class="body" id="ld-form" novalidate>
+    <div class="grid2">
+      <div class="field"><label for="lf-date">Дата</label><input id="lf-date" type="date"></div>
+      <div class="field"><label for="lf-budget">Ожидаемый чек, $ в месяц</label><input id="lf-budget" type="number" min="0" step="1" inputmode="numeric"></div>
+    </div>
+    <div class="field"><label for="lf-name">Имя или компания</label><input id="lf-name" placeholder="Например: Кофейня «Бодрость», Азиз"></div>
+    <div class="field"><label for="lf-contact">Контакт</label><input id="lf-contact" placeholder="Телефон, @telegram или Instagram"></div>
+    <div class="field"><span class="lbl" id="lf-src-lbl">Откуда пришёл</span><div class="opts" id="lf-src" role="group" aria-labelledby="lf-src-lbl"></div></div>
+    <div class="field"><span class="lbl" id="lf-svc-lbl">Что интересует</span><div class="opts" id="lf-svc" role="group" aria-labelledby="lf-svc-lbl"></div></div>
+    <div class="field"><span class="lbl" id="lf-st-lbl">Статус</span><div class="opts" id="lf-status" role="group" aria-labelledby="lf-st-lbl"></div></div>
+    <div class="field"><label for="lf-note">Комментарий</label><textarea id="lf-note" placeholder="О чём договорились, почему отказ, когда перезвонить"></textarea></div>
+    <p class="err" id="lf-err" hidden></p>
+  </form>
+  <footer>
+    <div class="right">
+      <button class="btn primary" id="ld-save" type="button">Сохранить</button>
+      <button class="btn" id="ld-cancel" type="button">Отмена</button>
+    </div>
+    <button class="btn danger" id="ld-del" type="button">Удалить</button>
+  </footer>
+</aside>
 
 <div class="scrim" id="scrim" hidden></div>
 <aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
@@ -805,7 +889,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
   }
 
   $('add-btn').onclick = () => openEditor(null);
-  $('fab').onclick = () => openEditor(null);
+  $('fab').onclick = () => (location.hash === '#leads' ? openLead(null) : openEditor(null));
   $('close-btn').onclick = closeEditor; $('cancel-btn').onclick = closeEditor; $('scrim').onclick = closeEditor;
   $('save-btn').onclick = save; $('del-btn').onclick = del; $('add-task').onclick = addTask;
   $('clear-examples').onclick = clearExamples;
@@ -1366,22 +1450,173 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
     finally { $('tk-lock-btn').disabled = false; }
   });
 
+  /* Лиды агентства (/api/leads, открыто всем по ссылке) */
+  const LEAD_SOURCES = ['Instagram', 'Telegram', 'WhatsApp', 'Рекомендация', 'Сайт', 'Реклама Meta', 'Холодный контакт', 'Другое'];
+  const LEAD_SERVICES = ['SMM', 'Таргет', 'Контекст', 'SEO', 'Сайт / лендинг', 'Брендинг', 'Комплекс'];
+  const LEAD_STATUS = [['new', 'Новый'], ['work', 'В работе'], ['won', 'Купил'], ['lost', 'Отказ']];
+  const LEAD_LABEL = Object.fromEntries(LEAD_STATUS);
+  let leads = [], ldMonth = monthKey(new Date()), ldEditing = null, ldDraft = {}, ldTimer = null, ldLoaded = false;
+
+  async function ldFetch(method, id, body) {
+    const r = await fetch('/api/leads' + (id ? '/' + encodeURIComponent(id) : ''), {
+      method, cache: 'no-store', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+  async function loadLeads() {
+    try { leads = await ldFetch('GET'); ldLoaded = true; renderLeads(); }
+    catch (e) { if (!ldLoaded) { $('ld-empty').hidden = false; $('ld-empty').textContent = 'Не удалось загрузить лиды. Проверьте интернет и обновите страницу.'; } }
+  }
+  function enterLeads() {
+    clearInterval(ldTimer);
+    loadLeads();
+    ldTimer = setInterval(() => { if (!document.hidden && location.hash === '#leads') loadLeads(); }, 15000);
+  }
+
+  function renderLeads() {
+    $('ld-month').textContent = monthName(ldMonth);
+    const inMonth = leads.filter((l) => (l.date || '').slice(0, 7) === ldMonth);
+    const cnt = (st) => inMonth.filter((l) => l.status === st).length;
+    const won = cnt('won'), lost = cnt('lost'), closed = won + lost;
+    $('lk-total').textContent = inMonth.length;
+    $('lk-total-sub').textContent = inMonth.length ? 'новых ' + cnt('new') + ' · отказов ' + lost : '';
+    $('lk-work').textContent = cnt('work');
+    $('lk-won').textContent = won;
+    const wonSum = inMonth.filter((l) => l.status === 'won').reduce((a, l) => a + (Number(l.budget) || 0), 0);
+    $('lk-won-sub').textContent = wonSum ? 'на $' + money.format(wonSum) + ' в месяц' : '';
+    $('lk-conv').textContent = inMonth.length ? pct(won / inMonth.length) : '—';
+    $('lk-conv-sub').textContent = closed ? 'из закрытых: ' + pct(won / closed) : '';
+
+    // Источники
+    const box = $('ld-sources'); box.replaceChildren();
+    const by = {};
+    inMonth.forEach((l) => { const k = l.source || 'Не указан'; (by[k] = by[k] || { n: 0, won: 0 }).n++; if (l.status === 'won') by[k].won++; });
+    const rows = Object.entries(by).sort((a, b) => b[1].n - a[1].n);
+    $('ld-sources-card').hidden = !rows.length;
+    const max = Math.max(1, ...rows.map(([, v]) => v.n));
+    rows.forEach(([k, v]) => {
+      const r = el('div', 'src-row');
+      const bar = el('div', 'src-bar'); const all = el('i'); all.style.width = (v.n / max * 100) + '%'; const w = el('b'); w.style.width = (v.won / max * 100) + '%';
+      bar.append(all, w);
+      r.append(el('span', null, k), bar, el('span', 'mono', v.n + (v.won ? ' · купили ' + v.won : '')));
+      box.append(r);
+    });
+
+    // Таблица
+    const q = $('ld-search').value.trim().toLowerCase();
+    const list = inMonth.filter((l) => !q || [l.name, l.contact, l.note, l.source, l.service].some((x) => (x || '').toLowerCase().includes(q)))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const tb = $('ld-rows'); tb.replaceChildren();
+    $('ld-empty').hidden = !!list.length;
+    $('ld-empty').textContent = inMonth.length ? 'Ничего не найдено.' : 'В этом месяце лидов нет. Нажмите «+ Новый лид», чтобы добавить первого.';
+    list.forEach((l) => {
+      const tr = el('tr');
+      tr.onclick = (e) => { if (e.target.tagName !== 'SELECT') openLead(l); };
+      const td = (cls, text) => { const c = el('td', cls, text); tr.append(c); return c; };
+      td('c-date mono', l.date ? fmtDate(l.date) : '—');
+      td('c-name nm', l.name || 'Без имени');
+      td('c-contact', l.contact || '—');
+      td('c-src', l.source || '—');
+      td('c-svc', l.service || '—');
+      td('c-budget num mono', l.budget ? money.format(l.budget) : '—');
+      const sc = td('c-status');
+      const sel = el('select', 's-' + (l.status || 'new')); sel.setAttribute('aria-label', 'Статус лида');
+      LEAD_STATUS.forEach(([k, label]) => sel.append(new Option(label, k)));
+      sel.value = l.status || 'new';
+      sel.onchange = () => saveLead({ ...l, status: sel.value }, 'Статус: ' + LEAD_LABEL[sel.value]);
+      sc.append(sel);
+      td('c-note note', l.note || '');
+      td('c-meta', [l.date && fmtDate(l.date), l.source, l.service, l.budget && '$' + money.format(l.budget)].filter(Boolean).join(' · '));
+      tb.append(tr);
+    });
+  }
+
+  async function saveLead(l, msg) {
+    const { id, ...data } = l;
+    const key = id || Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const body = { ...data, updatedAt: new Date().toISOString(), createdAt: data.createdAt || new Date().toISOString() };
+    const i = leads.findIndex((x) => x.id === key);
+    if (i >= 0) leads[i] = { ...body, id: key }; else leads.push({ ...body, id: key });
+    renderLeads();
+    try { await ldFetch('PUT', key, body); if (msg) toast(msg); return true; }
+    catch (e) { toast('Не получилось сохранить. Проверьте интернет.'); loadLeads(); return false; }
+  }
+
+  function chips(boxId, options, key) {
+    const box = $(boxId); box.replaceChildren();
+    const opts = options.slice();
+    if (ldDraft[key] && !opts.some((o) => (Array.isArray(o) ? o[0] : o) === ldDraft[key])) opts.push(ldDraft[key]);
+    opts.forEach((o) => {
+      const [val, label] = Array.isArray(o) ? o : [o, o];
+      const b = el('button', 'opt', label); b.type = 'button';
+      b.setAttribute('aria-pressed', String(ldDraft[key] === val));
+      b.onclick = () => { ldDraft[key] = key !== 'status' && ldDraft[key] === val ? '' : val; chips(boxId, options, key); };
+      box.append(b);
+    });
+  }
+  function openLead(l) {
+    ldEditing = l;
+    ldDraft = { source: l?.source || '', service: l?.service || '', status: l?.status || 'new' };
+    $('ld-title').textContent = l ? 'Лид' : 'Новый лид';
+    $('lf-date').value = l?.date || todayISO();
+    $('lf-name').value = l?.name || ''; $('lf-contact').value = l?.contact || '';
+    $('lf-budget').value = l?.budget ?? ''; $('lf-note').value = l?.note || '';
+    $('lf-err').hidden = true;
+    $('ld-del').hidden = !l; $('ld-del').classList.remove('armed'); $('ld-del').textContent = 'Удалить';
+    chips('lf-src', LEAD_SOURCES, 'source'); chips('lf-svc', LEAD_SERVICES, 'service'); chips('lf-status', LEAD_STATUS, 'status');
+    $('ld-scrim').hidden = false; $('ld-sheet').hidden = false; document.body.classList.add('locked');
+    $('ld-sheet').querySelector('.body').scrollTop = 0;
+    if (window.matchMedia('(min-width: 761px)').matches) setTimeout(() => $('lf-name').focus(), 30);
+  }
+  function closeLead() { $('ld-scrim').hidden = true; $('ld-sheet').hidden = true; document.body.classList.remove('locked'); ldEditing = null; }
+
+  $('ld-save').onclick = async () => {
+    const name = $('lf-name').value.trim(), contact = $('lf-contact').value.trim();
+    if (!name && !contact) { $('lf-err').textContent = 'Впишите имя или контакт.'; $('lf-err').hidden = false; $('lf-name').focus(); return; }
+    const budget = $('lf-budget').value.trim();
+    const l = { ...(ldEditing || {}), date: $('lf-date').value || todayISO(), name, contact, budget: budget === '' ? null : Number(budget), note: $('lf-note').value.trim(), ...ldDraft };
+    const date = l.date;
+    closeLead();
+    if (date.slice(0, 7) !== ldMonth) ldMonth = date.slice(0, 7);
+    await saveLead(l, 'Сохранено');
+  };
+  $('ld-del').onclick = async () => {
+    const b = $('ld-del');
+    if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Точно удалить?'; setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Удалить'; }, 4000); return; }
+    const id = ldEditing.id; closeLead();
+    leads = leads.filter((x) => x.id !== id); renderLeads();
+    try { await ldFetch('DELETE', id); toast('Лид удалён'); } catch (e) { toast('Не получилось удалить. Проверьте интернет.'); loadLeads(); }
+  };
+  $('ld-add').onclick = () => openLead(null);
+  $('ld-close').onclick = closeLead; $('ld-cancel').onclick = closeLead; $('ld-scrim').onclick = closeLead;
+  $('ld-form').addEventListener('submit', (e) => e.preventDefault());
+  $('ld-prev').onclick = () => { ldMonth = shiftMonth(ldMonth, -1); renderLeads(); };
+  $('ld-next').onclick = () => { ldMonth = shiftMonth(ldMonth, 1); renderLeads(); };
+  $('ld-search').addEventListener('input', renderLeads);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('ld-sheet').hidden) closeLead(); });
+
   /* Переходы между страницами */
   function route() {
     const h = location.hash.slice(1);
     currentId = h.startsWith('project-') ? h.slice(8) : null;
-    const fin = h === 'finance', tk = h === 'tasks';
-    $('view-list').hidden = !!currentId || fin || tk;
+    const fin = h === 'finance', tk = h === 'tasks', ld = h === 'leads';
+    $('view-list').hidden = !!currentId || fin || tk || ld;
+    $('view-leads').hidden = !ld;
     $('view-project').hidden = !currentId;
     $('view-finance').hidden = !fin;
     $('view-tasks').hidden = !tk;
-    $('fab').hidden = !!currentId || fin || tk || !canWrite;
-    document.title = fin ? 'Финансы · DDL V' : tk ? 'Задачи · DDL V' : 'DDL V';
+    $('fab').hidden = !!currentId || fin || tk || (!ld && !canWrite);
+    $('fab').textContent = ld ? '+ Новый лид' : '+ Новый проект';
+    document.title = fin ? 'Финансы · DDL V' : tk ? 'Задачи · DDL V' : ld ? 'Лиды · DDL V' : 'DDL V';
     if (!tk) clearInterval(tkTimer);
+    if (!ld) clearInterval(ldTimer);
+    if (!$('ld-sheet').hidden) closeLead();
     if (!$('sheet').hidden) closeEditor();
     if (currentId) renderProject();
     if (fin) enterFinance();
     if (tk) enterTasks();
+    if (ld) enterLeads();
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);
