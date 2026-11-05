@@ -4,6 +4,8 @@ import { human, local, fromLocal } from "../lib/time.mjs";
 import { listTasks, saveTask, taskStore, botStore, newId } from "../lib/tasks.mjs";
 import { digest } from "../lib/digest.mjs";
 import { nextNag, nagRow } from "../lib/nag.mjs";
+import { looksLikeLeads, importLeads } from "../lib/leadparse.mjs";
+import { getStore } from "@netlify/blobs";
 
 // Telegram-бот DDL V.
 // GET  /api/telegram/check — проверить токен из переменной окружения TELEGRAM_BOT_TOKEN (сам токен не выводится).
@@ -74,6 +76,8 @@ const HELP = [
   "• <i>каждый понедельник в 9 планёрка</i>",
   "• <i>по будням в 10 проверить заявки</i>",
   "• <i>купить домен</i> (без времени — просто в список)",
+  "",
+  "📥 Перешлите мне заявки вида «Новая заявка: … Имя: … Номер телефона: …» — я добавлю их в «Лиды» на сайте.",
   "",
   "🔁 Чтобы я повторял напоминание, пока не нажмёте «Сделано», выберите под ним «1 ч · 2 ч · 3 ч · 4 ч» или напишите: <i>каждые 2 часа выпить воды</i>. Ночью, с 22:00 до 9:00, повторы ждут утра.",
   "",
@@ -162,6 +166,13 @@ async function onMessage(msg, owner) {
   if (/^\/today/.test(text)) { const m = listMessage(await listTasks(), "today"); return send(chat, m.text, m.buttons); }
   if (/^\/digest/.test(text)) return send(chat, await digest(await listTasks()));
   if (text.startsWith("/")) return send(chat, "Не знаю такой команды.\n\n" + HELP);
+  if (looksLikeLeads(text)) {
+    const r = await importLeads(getStore({ name: "leads", consistency: "strong" }), text);
+    const lines = [r.added ? `📥 Добавил в «Лиды»: <b>${r.added}</b>` : "Эти заявки уже есть в «Лидах»."];
+    if (r.duplicates && r.added) lines.push(`Уже были (тот же номер): ${r.duplicates}`);
+    if (r.odd.length) lines.push(`⚠️ Проверьте номер: ${r.odd.map(esc).join(", ")}`);
+    return send(chat, lines.join("\n"));
+  }
   return createTask(chat, text);
 }
 

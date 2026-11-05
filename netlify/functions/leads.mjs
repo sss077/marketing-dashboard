@@ -1,7 +1,9 @@
 import { getStore } from "@netlify/blobs";
+import { importLeads } from "../lib/leadparse.mjs";
 
 // Лиды агентства: один blob на лид. Открыто всем, у кого есть ссылка на сайт (как проекты).
-// GET /api/leads — все лиды, PUT /api/leads/:id — сохранить, DELETE /api/leads/:id — удалить.
+// GET /api/leads — все лиды, PUT /api/leads/:id — сохранить, DELETE /api/leads/:id — удалить,
+// POST /api/leads/import {text, source, dryRun} — добавить заявки, вставленные текстом («Новая заявка: …»).
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_BYTES = 20_000;
@@ -25,6 +27,14 @@ export default async (req, context) => {
       }),
     );
     return json(rows.filter(Boolean));
+  }
+
+  if (id === "import" && req.method === "POST") {
+    const body = await req.json().catch(() => null);
+    const text = String(body?.text || "");
+    if (!text.trim() || text.length > 500_000) return json({ error: "Вставьте текст заявок" }, 400);
+    const source = String(body?.source || "Реклама Meta").slice(0, 60);
+    return json(await importLeads(store, text, { source, dryRun: !!body?.dryRun }));
   }
 
   if (!id || !ID_RE.test(id)) return json({ error: "Неверный id лида" }, 400);
