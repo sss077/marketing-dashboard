@@ -1639,7 +1639,8 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       const box = el('div');
       box.append(el('b', null, r.found ? 'Найдено заявок: ' + r.found : 'Заявок не найдено'));
       if (r.found) box.append(el('div', 'sub', r.added ? 'Будет добавлено: ' + r.added + (r.duplicates ? ' · уже есть: ' + r.duplicates : '') : 'Все эти номера уже есть в «Лидах».'));
-      if (!r.found) box.append(el('div', 'sub', 'Проверьте, что в тексте есть строки «Имя: …» и «Номер телефона: …».'));
+      if (r.sample?.length) box.append(el('div', 'sub', 'Например: ' + r.sample.join(', ') + (r.added > r.sample.length ? ' и ещё ' + (r.added - r.sample.length) : '')));
+      if (!r.found) box.append(el('div', 'sub', 'В тексте должны быть поля «Имя: …» и «Номер телефона: …». Если они есть, а заявки всё равно не находятся, пришлите скриншот текста в чат с Claude.'));
       if (r.odd?.length) box.append(el('div', 'sub warn', 'Проверьте номер: ' + r.odd.join(', ')));
       info.append(box);
       $('im-save').disabled = !r.added;

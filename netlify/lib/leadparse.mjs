@@ -29,31 +29,41 @@ export function looksLikeLeads(text) {
   return /нов(ая|ые)\s+заявк/i.test(text) || (/^\s*(имя|ism)\s*[:\-]/im.test(text) && /(номер|телефон|raqam)/i.test(text));
 }
 
+// Подпись поля в любом месте текста: «Имя:», «📞 Номер телефона:», «Реклама - 3» …
+const LABEL = /(?<![\p{L}])(номер\s+телефона|номер|телефон|тел\.?|phone|raqam|telefon|имя|ism|name|город|shahar|city|регион|viloyat|реклама|reklama)\s*[:\-–—]/giu;
+
 export function parseLeads(text) {
-  const blocks = String(text || "").split(/нов(?:ая|ые)\s+заявк[аи]\s*:?/i).map((b) => b.trim()).filter(Boolean);
+  // Переносы строк любого вида (Windows, старый Mac, iPhone U+2028) → \n; убираем звёздочки жирного шрифта.
+  let t = String(text || "").replace(/\r\n|\r|\u2028|\u2029|\u0085/g, "\n").replace(/\*+/g, "");
+  // Каждая подпись поля, заголовок и дата — с новой строки, даже если всё слиплось в одну строку.
+  t = t.replace(LABEL, "\n$&").replace(/нов(?:ая|ые)\s+заявк[аи]\s*:?/giu, "\n#ЗАЯВКА\n").replace(/(\d{1,2}[./]\d{1,2}[./]\d{4}(?:\s*[-–—,]?\s*\d{1,2}:\d{2})?)/g, "\n$1\n");
   const out = [];
-  for (const b of blocks) {
-    const lead = { name: "", contact: "", city: "", ad: "", date: null, time: null };
-    for (const raw of b.split(/\r?\n/)) {
-      const line = raw.trim();
-      if (!line) continue;
-      let m;
-      if (!lead.date && (m = DATE.exec(line)) && !FIELD.phone.test(line)) {
-        lead.date = `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-        if (m[4]) lead.time = `${m[4].padStart(2, "0")}:${m[5]}`;
-        continue;
-      }
-      for (const [k, re] of Object.entries(FIELD)) {
-        if ((m = re.exec(line))) {
-          const v = m[1].trim();
-          if (k === "phone") lead.contact = normPhone(v);
-          else lead[k] = v;
-          break;
-        }
+  let lead = null;
+  const fresh = () => ({ name: "", contact: "", city: "", ad: "", date: null, time: null });
+  const hasData = (l) => l && (l.name || l.contact);
+  const flush = () => { if (hasData(lead)) out.push(lead); lead = fresh(); };
+  lead = fresh();
+  for (const raw of t.split("\n")) {
+    const line = raw.replace(/^[^\p{L}\p{N}+#]+/u, "").trim(); // эмодзи, точки, тире в начале строки
+    if (!line) continue;
+    if (line === "#ЗАЯВКА") { flush(); continue; }
+    let m;
+    if ((m = DATE.exec(line)) && m.index === 0) {
+      if (hasData(lead)) flush(); // дата перед следующей заявкой
+      if (!lead.date) { lead.date = `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`; if (m[4]) lead.time = `${m[4].padStart(2, "0")}:${m[5]}`; }
+      continue;
+    }
+    for (const [k, re] of Object.entries(FIELD)) {
+      if ((m = re.exec(line))) {
+        const key = k === "phone" ? "contact" : k;
+        if (lead[key]) flush(); // поле повторилось — началась следующая заявка (текст без «Новая заявка»)
+        const v = m[1].trim();
+        lead[key] = k === "phone" ? normPhone(v) : v;
+        break;
       }
     }
-    if (lead.name || lead.contact) out.push(lead);
   }
+  flush();
   // Одинаковые номера в одном тексте — одна заявка; пустые поля берём из повтора.
   const byPhone = new Map();
   const merged = [];
@@ -154,7 +164,7 @@ export async function addLeads(store, list, { source = "Реклама Meta", dr
       });
     }
   }
-  return { found: list.length, added: fresh.length, duplicates: list.length - fresh.length, odd: odd.map((l) => `${l.name || "Без имени"}: ${l.contact}`), months: [...new Set(fresh.map((l) => (l.date || "").slice(0, 7)).filter(Boolean))] };
+  return { found: list.length, added: fresh.length, duplicates: list.length - fresh.length, sample: fresh.slice(0, 5).map((l) => l.name || l.contact), odd: odd.map((l) => `${l.name || "Без имени"}: ${l.contact}`), months: [...new Set(fresh.map((l) => (l.date || "").slice(0, 7)).filter(Boolean))] };
 }
 
 // Добавить заявки, вставленные текстом («Новая заявка: …»). dryRun — только посчитать.
