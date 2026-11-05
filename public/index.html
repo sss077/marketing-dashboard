@@ -1526,7 +1526,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
 
     // Таблица
     const q = $('ld-search').value.trim().toLowerCase();
-    const list = inMonth.filter((l) => !q || [l.name, l.contact, l.note, l.source, l.service, l.city, l.ad].some((x) => (x || '').toLowerCase().includes(q)))
+    const list = inMonth.filter((l) => !q || [l.name, l.contact, l.note, l.source, l.service, l.city, l.ad, l.client].some((x) => (x || '').toLowerCase().includes(q)))
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.time || '').localeCompare(a.time || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
     const tb = $('ld-rows'); tb.replaceChildren();
     $('ld-empty').hidden = !!list.length;
@@ -1541,6 +1541,7 @@ button, .opt, .row, .light { -webkit-tap-highlight-color: transparent; touch-act
       td('c-contact', l.contact || '—');
       const srcC = td('c-src', l.source || '—');
       if (l.ad) srcC.append(el('div', 'sub', 'реклама: ' + l.ad));
+      if (l.client) srcC.append(el('div', 'sub', 'клиент: ' + l.client));
       td('c-svc', l.service || '—');
       td('c-budget num mono', l.budget ? money.format(l.budget) : '—');
       const sc = td('c-status');
