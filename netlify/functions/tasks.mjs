@@ -1,5 +1,5 @@
 import { authorized } from "../lib/auth.mjs";
-import { listTasks, saveTask, taskStore, botStore, newId } from "../lib/tasks.mjs";
+import { listTasks, saveTask, taskStore, botStore, newId, taskChat } from "../lib/tasks.mjs";
 import { parse, nextRepeat, repeatLabel } from "../lib/parse.mjs";
 import { human } from "../lib/time.mjs";
 
@@ -20,7 +20,8 @@ export default async (req, context) => {
 
   if (req.method === "GET" && !id) {
     const owner = await botStore().get("owner", { type: "json" });
-    return json({ tasks: (await listTasks()).map((t) => view(t, now)), botLinked: !!owner });
+    // На сайте — только задачи руководителя; у сотрудников свои списки в боте.
+    return json({ tasks: (await listTasks()).filter((t) => taskChat(t, owner) === owner?.chat || !owner).map((t) => view(t, now)), botLinked: !!owner });
   }
 
   if (req.method === "POST" && !id) {

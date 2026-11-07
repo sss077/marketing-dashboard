@@ -1,7 +1,8 @@
 import { tg, send, botToken, hookSecret } from "../lib/tg.mjs";
 import { parse, nextRepeat, repeatLabel } from "../lib/parse.mjs";
 import { human, local, fromLocal } from "../lib/time.mjs";
-import { listTasks, saveTask, taskStore, botStore, newId } from "../lib/tasks.mjs";
+import { listTasks, saveTask, taskStore, botStore, newId, loadTeam, saveTeam, taskChat } from "../lib/tasks.mjs";
+import { randomBytes } from "node:crypto";
 import { digest } from "../lib/digest.mjs";
 import { nextNag, nagRow } from "../lib/nag.mjs";
 import { looksLikeLeads, importLeads } from "../lib/leadparse.mjs";
@@ -86,8 +87,19 @@ const HELP = [
   "/today — на сегодня и просроченные",
   "/digest — утренняя сводка прямо сейчас",
   "",
-  "Каждое утро в 9:00 — сводка: задачи на день, дедлайны проектов и красные проекты. 1-го числа — долги клиентов.",
+  "Каждое утро в 9:00 — сводка: задачи на день, дедлайны проектов и красные проекты.",
 ].join("\n");
+const OWNER_HELP = [
+  "",
+  "1-го числа присылаю вам долги клиентов (сотрудникам — нет).",
+  "",
+  "Команда:",
+  "/invite — ссылка-приглашение для сотрудника",
+  "/team — кто в команде, удалить сотрудника",
+].join("\n");
+const help = (isOwner) => HELP + (isOwner ? "\n" + OWNER_HELP : "\n\nУ каждого в команде свой список задач, чужие задачи не видны.");
+const mine = (tasks, chat, owner) => tasks.filter((t) => taskChat(t, owner) === chat);
+const who = (from) => [from?.first_name, from?.last_name].filter(Boolean).join(" ") || (from?.username ? "@" + from.username : "Сотрудник");
 
 const ok = () => new Response("ok");
 const short = (s, n = 32) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
@@ -129,7 +141,7 @@ export function listMessage(tasks, mode, now = Date.now()) {
 async function createTask(chat, text) {
   const now = Date.now();
   const p = parse(text, now);
-  const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, nagEvery: p.nagEvery, done: false, createdAt: now, src: "tg" };
+  const t = { id: newId(), text: p.text, due: p.due, repeat: p.repeat, nagEvery: p.nagEvery, done: false, createdAt: now, src: "tg", chat };
   await saveTask(t);
   const lines = [`✅ Записал: <b>${esc(t.text)}</b>`];
   if (t.repeat) lines.push(`🔁 ${repeatLabel(t.repeat)}`, `⏰ Первое напоминание: ${human(t.due, now)}`);
@@ -156,15 +168,33 @@ async function onMessage(msg, owner) {
     } else await send(chat, "Нажмите /start, чтобы начать.");
     return;
   }
-  if (owner.chat !== chat) {
-    await send(chat, "Это личный бот, он отвечает только своему владельцу.");
+  const isOwner = owner.chat === chat;
+  const team = await loadTeam();
+  if (!isOwner && !team.members[String(chat)]) {
+    const code = /^\/start\s+(\S+)/.exec(text)?.[1];
+    if (code && team.invite && code === team.invite) {
+      team.members[String(chat)] = { name: who(msg.from), username: msg.from?.username || "", at: Date.now() };
+      await saveTeam(team);
+      await send(chat, `Привет, ${esc(who(msg.from))}! Вы в команде DDL V.\n\n` + help(false));
+      await send(owner.chat, `👤 В команду вошёл: <b>${esc(who(msg.from))}</b>${msg.from?.username ? " (@" + esc(msg.from.username) + ")" : ""}\nУправление: /team`);
+    } else {
+      await send(chat, "Это бот команды DDL V. Чтобы пользоваться, попросите у руководителя ссылку-приглашение.");
+    }
     return;
   }
   if (!text) return send(chat, "Я понимаю только текст. Напишите задачу, например: «завтра в 10 позвонить клиенту».");
-  if (/^\/(start|help)/.test(text)) return send(chat, HELP);
-  if (/^\/(list|tasks)/.test(text)) { const m = listMessage(await listTasks(), "all"); return send(chat, m.text, m.buttons); }
-  if (/^\/today/.test(text)) { const m = listMessage(await listTasks(), "today"); return send(chat, m.text, m.buttons); }
-  if (/^\/digest/.test(text)) return send(chat, await digest(await listTasks()));
+  if (/^\/(start|help)/.test(text)) return send(chat, help(isOwner));
+  if (/^\/(list|tasks)/.test(text)) { const m = listMessage(mine(await listTasks(), chat, owner), "all"); return send(chat, m.text, m.buttons); }
+  if (/^\/today/.test(text)) { const m = listMessage(mine(await listTasks(), chat, owner), "today"); return send(chat, m.text, m.buttons); }
+  if (/^\/digest/.test(text)) return send(chat, await digest(mine(await listTasks(), chat, owner)));
+  if (isOwner && /^\/invite/.test(text)) {
+    team.invite = randomBytes(6).toString("base64url");
+    await saveTeam(team);
+    const me = await tg("getMe");
+    const link = `https://t.me/${me.result?.username}?start=${team.invite}`;
+    return send(chat, `🔗 Ссылка-приглашение для сотрудника:\n${esc(link)}\n\nОтправьте её сотруднику: он откроет ссылку и нажмёт Start. По ссылке может войти несколько человек. Чтобы старая ссылка перестала работать, снова напишите /invite.`);
+  }
+  if (isOwner && /^\/team/.test(text)) return send(chat, ...teamMessage(team));
   if (text.startsWith("/")) return send(chat, "Не знаю такой команды.\n\n" + HELP);
   if (looksLikeLeads(text)) {
     const r = await importLeads(getStore({ name: "leads", consistency: "strong" }), text);
@@ -176,16 +206,38 @@ async function onMessage(msg, owner) {
   return createTask(chat, text);
 }
 
+function teamMessage(team) {
+  const list = Object.entries(team.members || {});
+  if (!list.length) return ["В команде пока никого. Напишите /invite, чтобы получить ссылку-приглашение.", null];
+  return [
+    "👥 <b>Команда</b>\n" + list.map(([, m]) => `• ${esc(m.name)}${m.username ? " (@" + esc(m.username) + ")" : ""}`).join("\n") + "\n\nНажмите, чтобы убрать сотрудника из бота:",
+    list.map(([id, m]) => [{ text: "❌ " + short(m.name, 28), callback_data: `kick:${id}` }]),
+  ];
+}
+
 async function onCallback(q, owner) {
   const answer = (text) => tg("answerCallbackQuery", { callback_query_id: q.id, ...(text ? { text } : {}) });
-  if (!owner || q.message?.chat?.id !== owner.chat) return answer("Это личный бот.");
+  const chat = q.message?.chat?.id;
+  const team = await loadTeam();
+  if (!owner || (chat !== owner.chat && !team.members[String(chat)])) return answer("Это бот команды DDL V.");
   const [action, ...rest] = String(q.data || "").split(":");
   const id = rest[rest.length - 1];
+  if (action === "kick") {
+    if (chat !== owner.chat) return answer();
+    const m = team.members[id];
+    delete team.members[id];
+    await saveTeam(team);
+    if (m) await send(Number(id), "Вас убрали из команды DDL V. Бот больше не будет вам отвечать.");
+    await answer(m ? "Убран: " + m.name : "Уже убран");
+    const [text, buttons] = teamMessage(team);
+    return tg("editMessageText", { chat_id: chat, message_id: q.message.message_id, text, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons || [] } });
+  }
   const store = taskStore();
   const data = await store.get(id, { type: "json" });
   const edit = (text, buttons) => tg("editMessageText", { chat_id: q.message.chat.id, message_id: q.message.message_id, text, parse_mode: "HTML", reply_markup: { inline_keyboard: buttons || [] } });
   if (!data) { await answer("Задача уже удалена"); return edit(q.message.text ? esc(q.message.text) : "Задача удалена"); }
   const t = { ...data, id };
+  if (taskChat(t, owner) !== chat) return answer("Это не ваша задача");
   const now = Date.now();
   const title = `<b>${esc(t.text)}</b>`;
 
@@ -211,7 +263,7 @@ async function onCallback(q, owner) {
       await answer("Сделано ✅");
       if (action === "done") return edit(`✅ <s>${esc(t.text)}</s>\nСделано`);
     }
-    const m = listMessage(await listTasks(), rest[0] === "t" ? "today" : "all", now);
+    const m = listMessage(mine(await listTasks(), chat, owner), rest[0] === "t" ? "today" : "all", now);
     return edit(m.text, m.buttons);
   }
   if (action === "snz" || action === "tmr") {
@@ -248,7 +300,7 @@ async function hook(req) {
   } catch (e) {
     console.error(e);
     const chat = u.message?.chat?.id ?? u.callback_query?.message?.chat?.id;
-    if (chat && owner?.chat === chat) await send(chat, "Что-то пошло не так, попробуйте ещё раз.");
+    if (chat && owner) await send(chat, "Что-то пошло не так, попробуйте ещё раз.");
   }
   return ok();
 }
@@ -264,13 +316,15 @@ async function setup(req) {
     { command: "today", description: "На сегодня и просроченные" },
     { command: "digest", description: "Сводка: задачи, дедлайны, красные проекты" },
     { command: "help", description: "Как писать задачи" },
+    { command: "invite", description: "Пригласить сотрудника (только руководитель)" },
+    { command: "team", description: "Команда (только руководитель)" },
   ] });
   const owner = await botStore().get("owner", { type: "json" });
   if (!r.ok) return page("Не удалось подключить бота", [`Telegram ответил: ${esc(r.description || "ошибка")}. Откройте эту страницу ещё раз через минуту.`], false);
   return page("Бот подключён ✅", [
     `Бот: <b>${esc(me.result.first_name)}</b> (@${esc(me.result.username)})`,
     owner
-      ? "Владелец уже назначен. Бот отвечает только ему."
+      ? "Владелец уже назначен. Бот отвечает ему и сотрудникам, которых он пригласил командой /invite."
       : `Теперь откройте <a href="https://t.me/${esc(me.result.username)}">@${esc(me.result.username)}</a> и нажмите <b>Start</b>. Кто нажмёт первым, тот и станет владельцем, поэтому сделайте это сразу.`,
   ], true);
 }

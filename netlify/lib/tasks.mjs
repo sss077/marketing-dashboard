@@ -22,3 +22,13 @@ export async function saveTask(t) {
   await taskStore().setJSON(id, data);
   return t;
 }
+
+// Команда бота: владелец (bot-meta/owner) и сотрудники, вошедшие по коду-приглашению.
+// { invite: "код", members: { "<chat id>": { name, username, at } } }
+export async function loadTeam() {
+  return (await botStore().get("team", { type: "json" })) || { invite: null, members: {} };
+}
+export const saveTeam = (team) => botStore().setJSON("team", team);
+
+// Чья задача: у старых задач нет поля chat — они принадлежат владельцу.
+export const taskChat = (t, owner) => t.chat ?? owner?.chat;
