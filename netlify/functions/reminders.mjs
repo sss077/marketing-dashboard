@@ -64,7 +64,8 @@ export default async () => {
     if (state.digest === dayKey(now)) state.digests[owner.chat] = state.digest; // со старой версии
     for (const chat of people) {
       if (state.digests[chat] === dayKey(now)) continue;
-      await send(chat, await digest(tasks.filter((t) => taskChat(t, owner) === chat), now));
+      const teamView = chat === owner.chat ? Object.entries(team.members || {}).map(([id, m]) => ({ name: m.name, tasks: tasks.filter((t) => String(taskChat(t, owner)) === id) })) : null;
+      await send(chat, await digest(tasks.filter((t) => taskChat(t, owner) === chat), now, teamView));
       state.digests[chat] = dayKey(now); changed = true;
     }
   }

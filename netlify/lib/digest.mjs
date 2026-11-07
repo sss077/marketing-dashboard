@@ -21,7 +21,8 @@ export const loadProjects = () => all("projects");
 export const loadFinance = () => all("finance");
 
 // Утренняя сводка: задачи на сегодня и просроченные, дедлайны проектов (сегодня, завтра, через 3 дня, просрочены), красные проекты.
-export async function digest(tasks, now = Date.now()) {
+// team — для руководителя: [{ name, tasks }] по каждому сотруднику, чтобы показать, у кого что горит.
+export async function digest(tasks, now = Date.now(), team = null) {
   const l = local(now);
   const endToday = fromLocal(l.y, l.mo, l.d + 1);
   const open = tasks.filter((t) => !t.done && t.due).sort((a, b) => a.due - b.due);
@@ -44,6 +45,15 @@ export async function digest(tasks, now = Date.now()) {
     }).join("\n"));
   }
   if (red.length) out.push("🔴 <b>Красные проекты</b>\n" + red.map(({ p, a }) => `• ${esc(p.name)} — ${esc(a.reasons[0] || "")}`).join("\n"));
+  if (team?.length) {
+    const rows = team.map(({ name, tasks: list }) => {
+      const o = list.filter((t) => !t.done && t.due);
+      const late = o.filter((t) => t.due < now).length, td = o.filter((t) => t.due >= now && t.due < endToday).length;
+      if (!late && !td) return null;
+      return `• ${esc(name)}: ${[late && `⚠️ просрочено ${late}`, td && `сегодня ${td}`].filter(Boolean).join(", ")}`;
+    }).filter(Boolean);
+    if (rows.length) out.push("👥 <b>Команда</b>\n" + rows.join("\n") + "\nПодробно: /teamtasks");
+  }
   if (out.length === 1) out.push("Задач и срочных дедлайнов на сегодня нет. Хорошего дня!");
   return out.join("\n\n");
 }

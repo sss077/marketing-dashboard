@@ -1,5 +1,5 @@
 import { authorized } from "../lib/auth.mjs";
-import { listTasks, saveTask, taskStore, botStore, newId, taskChat } from "../lib/tasks.mjs";
+import { listTasks, saveTask, taskStore, botStore, newId, taskChat, loadTeam } from "../lib/tasks.mjs";
 import { parse, nextRepeat, repeatLabel } from "../lib/parse.mjs";
 import { human } from "../lib/time.mjs";
 
@@ -20,8 +20,11 @@ export default async (req, context) => {
 
   if (req.method === "GET" && !id) {
     const owner = await botStore().get("owner", { type: "json" });
-    // На сайте — только задачи руководителя; у сотрудников свои списки в боте.
-    return json({ tasks: (await listTasks()).filter((t) => taskChat(t, owner) === owner?.chat || !owner).map((t) => view(t, now)), botLinked: !!owner });
+    // Руководитель видит свои задачи и задачи сотрудников: у каждой задачи — чья она (who).
+    const team = await loadTeam();
+    const people = [{ key: "me", name: "Мои" }, ...Object.entries(team.members || {}).map(([id, m]) => ({ key: id, name: m.name }))];
+    const whoOf = (t) => { const c = taskChat(t, owner); return !owner || c === owner.chat ? "me" : String(c); };
+    return json({ tasks: (await listTasks()).map((t) => ({ ...view(t, now), who: whoOf(t) })), people, botLinked: !!owner });
   }
 
   if (req.method === "POST" && !id) {
